@@ -1,0 +1,2726 @@
+<!-- Bessel'sStar Imaging Editor is structured as a complete, self-contained single-file client-side web application built using modern HTML5, CSS3, and vanilla JavaScript without external libraries or frameworks.All layout structure (HTML), styling (CSS), and image processing logic (JavaScript) are bundled into a single .html document. The browser's HTML5 Canvas API serves as the primary rendering, viewport, and interaction engine for Astro Imaging Editor ..Adam Bessell-->
+
+<!DOCTYPE html>
+<html lang="en">
+<!-- SPDX-License-Identifier: MIT | Copyright (c) 2026 Adam Bessell | See LICENSE file in the repository -->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bessel'sStar Imaging Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#0a0e14;
+    --bg-panel:#12161f;
+    --bg-panel-alt:#171c27;
+    --bg-raised:#1c2230;
+    --border:#262d3a;
+    --border-soft:#1d2330;
+    --text-primary:#e6e9ef;
+    --text-secondary:#8b95a7;
+    --text-dim:#5b6577;
+    --accent-teal:#5fc9c0;
+    --accent-teal-dim:#5fc9c033;
+    --accent-amber:#d9a84e;
+    --danger:#d9756c;
+    --focus:#5fc9c0;
+    --radius:3px;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --sans:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg-void);
+    color:var(--text-primary);
+    font-family:var(--sans);
+    font-size:13px;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  button{
+    font-family:var(--sans);
+    font-size:12px;
+    color:var(--text-primary);
+    background:var(--bg-raised);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:6px 12px;
+    cursor:pointer;
+    line-height:1.2;
+  }
+  button:hover:not(:disabled){background:#232a3a;border-color:#33394a;}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  button.primary{background:var(--accent-teal);border-color:var(--accent-teal);color:#08110f;font-weight:600;}
+  button.primary:hover:not(:disabled){background:#72d4cc;}
+  button.ghost{background:transparent;}
+  button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--focus); outline-offset:1px;
+  }
+  input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:3px; background:var(--border);
+    border-radius:2px; margin:0;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:12px;height:12px;border-radius:50%;
+    background:var(--accent-teal); cursor:pointer; margin-top:-4.5px;
+    border:2px solid #0a0e14;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:10px;height:10px;border-radius:50%;background:var(--accent-teal);
+    cursor:pointer;border:2px solid #0a0e14;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;}
+  select{
+    font-family:var(--sans); font-size:12px; color:var(--text-primary);
+    background:var(--bg-raised); border:1px solid var(--border);
+    border-radius:var(--radius); padding:5px 8px; width:100%;
+  }
+  #exportFormat{ width:auto; padding:6px 8px; }
+  #exportBitDepth{ width:auto; padding:6px 8px; }
+  input[type=checkbox]{accent-color:var(--accent-teal); width:14px;height:14px;}
+  h2{
+    font-size:11px; font-weight:600; letter-spacing:.02em; color:var(--text-secondary);
+    margin:0; text-transform:none;
+  }
+  .mono{font-family:var(--mono);}
+
+  #app{display:flex; flex-direction:column; height:100vh;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 14px; height:46px; flex:none;
+    background:var(--bg-panel); border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex; align-items:baseline; gap:8px;}
+  .brand .name{font-weight:600; font-size:14px; letter-spacing:.01em;}
+  .brand .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-teal);display:inline-block;}
+  .topbar-actions{display:flex; align-items:center; gap:6px;}
+  .divider-v{width:1px; height:20px; background:var(--border); margin:0 4px;}
+
+  /* ---------- Workspace ---------- */
+  .workspace{flex:1; display:flex; min-height:0;}
+
+  .tool-rail{
+    width:300px; flex:none; background:var(--bg-panel);
+    border-right:1px solid var(--border); overflow-y:auto;
+  }
+  .inspector{
+    width:288px; flex:none; background:var(--bg-panel);
+    border-left:1px solid var(--border); overflow-y:auto;
+    display:flex; flex-direction:column;
+  }
+  .viewport{
+    flex:1; position:relative; background:
+      radial-gradient(ellipse at 50% 40%, #0d1119 0%, #060810 75%);
+    overflow:auto;
+  }
+  .canvas-wrap{
+    min-width:100%; min-height:100%;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  #mainCanvas{
+    display:block; box-shadow:0 0 0 1px var(--border), 0 20px 60px rgba(0,0,0,.6);
+    background:#000; cursor:grab;
+  }
+  #mainCanvas:active{cursor:grabbing;}
+
+  /* ---------- Zoom bar ---------- */
+  .zoom-bar{
+    position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+    display:none; align-items:center; gap:2px; z-index:5;
+    background:rgba(18,22,31,.92); backdrop-filter:blur(6px);
+    border:1px solid var(--border); border-radius:6px; padding:4px;
+    box-shadow:0 6px 20px rgba(0,0,0,.45);
+  }
+  .zoom-bar.visible{display:flex;}
+  .zoom-bar button{
+    background:transparent; border:none; padding:5px 10px; min-width:26px;
+    font-size:13px; line-height:1;
+  }
+  .zoom-bar button:hover:not(:disabled){background:var(--bg-raised);}
+  .zoom-bar .zoom-pct{
+    font-family:var(--mono); font-size:11px; min-width:50px;
+    color:var(--text-secondary); padding:5px 6px;
+  }
+  .zoom-bar .zoom-pct:hover:not(:disabled){color:var(--text-primary);}
+  .zoom-bar .zoom-sep{width:1px; height:18px; background:var(--border); margin:0 3px;}
+  .empty-state{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px; text-align:center;
+    color:var(--text-secondary); pointer-events:none;
+  }
+  .empty-state svg{opacity:.5;}
+  .empty-state .et{font-size:14px; color:var(--text-primary); font-weight:500;}
+  .empty-state .es{font-size:12px; max-width:280px; line-height:1.5;}
+  .empty-state button{pointer-events:auto;}
+
+  /* ---------- Accordion panels ---------- */
+  .panel{border-bottom:1px solid var(--border-soft);}
+  .panel-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:11px 14px; cursor:pointer; user-select:none;
+  }
+  .panel-header:hover{background:var(--bg-panel-alt);}
+  .panel-header .chev{color:var(--text-dim); font-size:10px; transition:transform .15s;}
+  .panel.open .panel-header .chev{transform:rotate(90deg);}
+  .panel-body{display:none; padding:2px 14px 16px;}
+  .panel.open .panel-body{display:block;}
+  .panel-header-right{display:flex; align-items:center; gap:8px;}
+
+  .field{margin-top:14px;}
+  .field:first-child{margin-top:4px;}
+  .field.disabled{opacity:.4;}
+  .field-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;}
+  .field-row label{color:var(--text-secondary); font-size:11.5px;}
+  .field-row .val{font-family:var(--mono); font-size:11px; color:var(--accent-teal); min-width:34px; text-align:right;}
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-top:10px;}
+  .checkbox-row label{font-size:11.5px; color:var(--text-secondary); cursor:pointer;}
+
+  .tabs{display:flex; gap:2px; background:var(--bg-raised); border-radius:var(--radius); padding:2px; margin-bottom:12px;}
+  .tabs button{
+    flex:1; padding:5px 0; background:transparent; border:none; font-size:11px;
+    color:var(--text-secondary); border-radius:2px;
+  }
+  .tabs button.active{background:var(--bg-panel-alt); color:var(--accent-teal);}
+  .tabs button:hover:not(.active){color:var(--text-primary); background:transparent;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .hint{font-size:10.5px; color:var(--text-dim); line-height:1.5; margin-top:10px;}
+
+  .curve-canvas{width:100%; height:150px; background:var(--bg-panel-alt); border:1px solid var(--border); border-radius:var(--radius); cursor:crosshair; touch-action:none;}
+
+  .btn-row{display:flex; gap:6px; margin-top:12px;}
+  .btn-row button{flex:1; font-size:11px; padding:6px 4px;}
+
+  /* ---------- Inspector ---------- */
+  .inspector .panel-body-static{padding:12px 14px 16px;}
+  .hist-header{display:flex; align-items:center; justify-content:space-between;}
+  .hist-toggle-btn{
+    background:transparent; border:1px solid var(--border); border-radius:var(--radius);
+    color:var(--text-secondary); font-size:9.5px; font-family:var(--mono); letter-spacing:.02em;
+    padding:3px 7px; cursor:pointer; line-height:1;
+  }
+  .hist-toggle-btn:hover{color:var(--text-primary); border-color:#33394a;}
+  .hist-toggle-btn.active{color:var(--accent-teal); border-color:var(--accent-teal-dim); background:var(--accent-teal-dim);}
+  .hist-controls{display:flex; gap:6px; margin-top:8px;}
+  .hist-controls select{flex:1 1 0; min-width:0; padding:4px 6px; font-size:11px;}
+  .hist-wrap{position:relative; margin-top:8px;}
+  #histCanvas{
+    display:block; width:100%; height:128px; background:var(--bg-panel-alt);
+    border:1px solid var(--border); border-bottom:none; border-radius:var(--radius) var(--radius) 0 0;
+    cursor:crosshair; touch-action:pan-y; user-select:none; -webkit-user-select:none;
+  }
+  .hist-wrap.all #histCanvas{height:300px;}
+  /* Black-to-white (or black-to-channel-colour) strip under the plot, like Photoshop's tonal ramp. */
+  .hist-gradient{
+    height:8px; border:1px solid var(--border); border-radius:0 0 var(--radius) var(--radius);
+    background:linear-gradient(90deg,#000,#fff);
+  }
+  .hist-clip{
+    position:absolute; top:5px; width:16px; height:16px; opacity:.28;
+    display:flex; align-items:center; justify-content:center; transition:opacity .15s;
+    color:var(--text-dim); pointer-events:none;
+  }
+  .hist-clip svg{width:9px;height:9px; display:block;}
+  .hist-clip-lo{left:5px;}
+  .hist-clip-hi{right:5px;}
+  .hist-clip.warn{opacity:1; color:var(--danger);}
+  .hist-axis{
+    display:flex; justify-content:space-between; margin-top:4px;
+    font-family:var(--mono); font-size:9.5px; color:var(--text-dim);
+  }
+  .hist-stats{
+    display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:12px;
+    margin-top:12px; font-family:var(--mono); font-size:10.5px;
+  }
+  .hist-stats.hidden{display:none;}
+  .hist-stat{display:flex; justify-content:space-between; gap:6px; line-height:1.8; min-width:0;}
+  .hist-stat > span{color:var(--text-dim); flex:none;}
+  .hist-stat > b{font-weight:500; color:var(--text-primary); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .hist-clip-readout{
+    display:flex; justify-content:space-between; margin-top:8px;
+    font-size:10px; font-family:var(--mono); color:var(--text-dim);
+  }
+  .hist-clip-readout span.warn{color:var(--danger);}
+
+  .image-info-row{display:flex; justify-content:space-between; font-size:11px; margin-top:8px;}
+  .image-info-row label{color:var(--text-secondary);}
+  .image-info-row span.mono{color:var(--text-primary);}
+  .image-name{font-size:11.5px; word-break:break-all; line-height:1.4; margin-top:2px;}
+
+  ::-webkit-scrollbar{width:9px; height:9px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#2a3141; border-radius:5px; border:2px solid var(--bg-panel);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+
+  @media (max-width: 900px){
+    .tool-rail{width:250px;}
+    .inspector{width:190px;}
+    .hist-stats{grid-template-columns:minmax(0,1fr);}
+  }
+
+  /* ---------- About dialog ---------- */
+  .brand .about-link{
+    background:transparent; border:none; padding:2px 6px; margin-left:6px;
+    font-size:11px; color:var(--text-secondary); cursor:pointer;
+    text-decoration:underline; text-underline-offset:2px;
+  }
+  .brand .about-link:hover:not(:disabled){background:transparent; border:none; color:var(--accent-teal);}
+  dialog.about{
+    background:var(--bg-panel); color:var(--text-primary);
+    border:1px solid var(--border); border-radius:6px;
+    padding:0; width:min(420px, calc(100vw - 32px));
+    box-shadow:0 20px 60px rgba(0,0,0,.6);
+  }
+  dialog.about::backdrop{background:rgba(6,8,16,.7);}
+  .about-body{padding:20px 22px 8px;}
+  .about-body h2{margin:0 0 4px; font-size:15px; font-weight:600; color:var(--text-primary); text-transform:none; letter-spacing:0;}
+  .about-body p{margin:8px 0 0; color:var(--text-secondary); line-height:1.55;}
+  .about-body p.mono{font-size:11px; color:var(--text-dim);}
+  .about-body a{color:var(--accent-teal);}
+  .about-actions{display:flex; justify-content:flex-end; padding:14px 22px 18px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span class="name">Bessel'sStar imaging editor</span>
+      <button type="button" id="btnAbout" class="about-link" title="About &amp; license">About</button>
+    </div>
+    <div class="topbar-actions">
+      <button id="btnLoad">Open image</button>
+      <input type="file" id="fileInput" accept="image/*,.fits,.fit,.fts,.tif,.tiff" hidden>
+      <div class="divider-v"></div>
+      <button id="btnUndo" disabled title="Undo">Undo</button>
+      <button id="btnRedo" disabled title="Redo">Redo</button>
+      <button id="btnReset" disabled>Reset edits</button>
+      <div class="divider-v"></div>
+      <select id="exportFormat" disabled title="Export file format">
+        <option value="png">PNG</option>
+        <option value="tiff">TIFF</option>
+        <option value="fits">FITS</option>
+      </select>
+      <select id="exportBitDepth" disabled title="Export bit depth"></select>
+      <button id="btnExport" class="primary" disabled>Export</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+
+    <!-- ===================== TOOL RAIL ===================== -->
+    <aside class="tool-rail" id="toolRail">
+
+      <!-- BACKGROUND -->
+      <section class="panel" data-panel="background">
+        <div class="panel-header"><h2>Background</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="checkbox-row">
+            <input type="checkbox" id="tempStretchToggle">
+            <label for="tempStretchToggle">Temporary stretch (preview only)</label>
+          </div>
+          <div class="field" id="tempStretchAmountField">
+            <div class="field-row"><label>Amount</label><span class="val" id="tempStretchAmountVal">30</span></div>
+            <input type="range" min="0" max="100" step="1" id="tempStretchAmountSlider" value="30">
+          </div>
+          <div class="hint">Boosts on-screen brightness with a smooth curve (blended toward the same Asinh stretch as the Stretch panel) so faint gradients are easier to judge — lower the Amount for a gentler boost. It's a view-only aid: it isn't saved to history and has no effect on the exported image. Turn it off once the background looks right.</div>
+          <div class="checkbox-row" style="margin-top:14px;">
+            <input type="checkbox" id="bgEnabled" data-param="bg.enabled">
+            <label for="bgEnabled">Neutralize background</label>
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Strength</label><span class="val" data-value-for="bg.strength">50</span></div>
+            <input type="range" min="0" max="100" step="1" data-param="bg.strength">
+          </div>
+          <div class="hint">Samples the frame edges and subtracts the estimated sky background — useful for light-pollution gradients before stretching.</div>
+        </div>
+      </section>
+
+      <!-- MEDIAN STRETCH -->
+      <section class="panel" data-panel="statstretch">
+        <div class="panel-header"><h2>Median Stretch</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="checkbox-row">
+            <input type="checkbox" id="statEnabled" data-param="statStretch.enabled">
+            <label for="statEnabled">Enable</label>
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Target median</label><span class="val" data-value-for="statStretch.targetMedian">25</span></div>
+            <input type="range" min="1" max="99" step="1" data-param="statStretch.targetMedian">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Blackpoint sigma</label><span class="val" data-value-for="statStretch.sigma">5.0</span></div>
+            <input type="range" min="5" max="60" step="1" data-param="statStretch.sigma">
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="statNoBlackClip" data-param="statStretch.noBlackClip">
+            <label for="statNoBlackClip">No black clipping</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="statNormalize" data-param="statStretch.normalize">
+            <label for="statNormalize">Normalize to peak Link RGB</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="statApplyCurves" data-param="statStretch.applyCurves">
+            <label for="statApplyCurves">Contrast curve boost</label>
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Curve boost</label><span class="val" data-value-for="statStretch.curvesBoost">0</span></div>
+            <input type="range" min="0" max="100" step="1" data-param="statStretch.curvesBoost">
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="statHdr" data-param="statStretch.hdrCompress">
+            <label for="statHdr">HDR highlight compression</label>
+          </div>
+          <div class="field">
+            <div class="field-row"><label>HDR</label><span class="val" data-value-for="statStretch.hdrAmount">0</span></div>
+            <input type="range" min="0" max="100" step="1" data-param="statStretch.hdrAmount">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Fine Tune</label><span class="val" data-value-for="statStretch.hdrKnee">75</span></div>
+            <input type="range" min="10" max="95" step="1" data-param="statStretch.hdrKnee">
+          </div>
+        </div>
+      </section>
+
+      <!-- STRETCH -->
+      <section class="panel open" data-panel="stretch">
+        <div class="panel-header"><h2>Stretch</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="field">
+            <div class="field-row"><label>Curve</label></div>
+            <select id="stretchType" data-param="stretch.type">
+              <option value="linear">Linear</option>
+              <option value="log">Logarithmic</option>
+              <option value="asinh">Asinh</option>
+              <option value="mtf">Midtone (MTF)</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Black point</label><span class="val" data-value-for="stretch.black">0</span></div>
+            <input type="range" min="0" max="255" step="1" data-param="stretch.black">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>White point</label><span class="val" data-value-for="stretch.white">255</span></div>
+            <input type="range" min="0" max="255" step="1" data-param="stretch.white">
+          </div>
+          <div class="field" id="midtoneField">
+            <div class="field-row"><label>Midtone</label><span class="val" data-value-for="stretch.mid">128</span></div>
+            <input type="range" min="1" max="254" step="1" data-param="stretch.mid">
+          </div>
+          <div class="hint" id="midtoneHint">Midtone (MTF) follows the standard midtone-transfer-function used by dedicated astro processing tools — it lifts faint signal without blowing out stars. Only active when Curve is set to Midtone (MTF).</div>
+        </div>
+      </section>
+
+      <!-- LEVELS -->
+      <section class="panel" data-panel="levels">
+        <div class="panel-header"><h2>Levels</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="tabs" data-tabgroup="levels">
+            <button data-tab="RGB" class="active">RGB</button>
+            <button data-tab="R">R</button>
+            <button data-tab="G">G</button>
+            <button data-tab="B">B</button>
+          </div>
+          <div id="levels-RGB" class="tab-panel active" data-tab-panel="RGB"></div>
+          <div id="levels-R" class="tab-panel" data-tab-panel="R"></div>
+          <div id="levels-G" class="tab-panel" data-tab-panel="G"></div>
+          <div id="levels-B" class="tab-panel" data-tab-panel="B"></div>
+        </div>
+      </section>
+
+      <!-- CURVES -->
+      <section class="panel" data-panel="curves">
+        <div class="panel-header"><h2>Curves</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="tabs" data-tabgroup="curves">
+            <button data-tab="L" class="active">Lum</button>
+            <button data-tab="R">R</button>
+            <button data-tab="G">G</button>
+            <button data-tab="B">B</button>
+          </div>
+          <div class="tab-panel active" data-tab-panel="L"><canvas class="curve-canvas" id="curveCanvasL" data-channel="L"></canvas></div>
+          <div class="tab-panel" data-tab-panel="R"><canvas class="curve-canvas" id="curveCanvasR" data-channel="R"></canvas></div>
+          <div class="tab-panel" data-tab-panel="G"><canvas class="curve-canvas" id="curveCanvasG" data-channel="G"></canvas></div>
+          <div class="tab-panel" data-tab-panel="B"><canvas class="curve-canvas" id="curveCanvasB" data-channel="B"></canvas></div>
+          <div class="btn-row">
+            <button id="btnCurveReset">Reset curve</button>
+          </div>
+          <div class="hint">Click to add a point, drag to shape the curve, double-click a point to remove it.</div>
+        </div>
+      </section>
+
+      <!-- COLOR BALANCE -->
+      <section class="panel" data-panel="color">
+        <div class="panel-header"><h2>Color balance</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="field">
+            <div class="field-row"><label>Temperature</label><span class="val" data-value-for="colorBalance.temp">0</span></div>
+            <input type="range" min="-100" max="100" step="1" data-param="colorBalance.temp">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Tint</label><span class="val" data-value-for="colorBalance.tint">0</span></div>
+            <input type="range" min="-100" max="100" step="1" data-param="colorBalance.tint">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Red gain</label><span class="val" data-value-for="colorBalance.gainR">100</span></div>
+            <input type="range" min="0" max="200" step="1" data-param="colorBalance.gainR">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Green gain</label><span class="val" data-value-for="colorBalance.gainG">100</span></div>
+            <input type="range" min="0" max="200" step="1" data-param="colorBalance.gainG">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Blue gain</label><span class="val" data-value-for="colorBalance.gainB">100</span></div>
+            <input type="range" min="0" max="200" step="1" data-param="colorBalance.gainB">
+          </div>
+        </div>
+      </section>
+
+      <!-- NOISE REDUCTION -->
+      <section class="panel" data-panel="noise">
+        <div class="panel-header"><h2>Noise reduction</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="field">
+            <div class="field-row"><label>Luminance amount</label><span class="val" data-value-for="noise.lumAmount">0</span></div>
+            <input type="range" min="0" max="100" step="1" data-param="noise.lumAmount">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Luminance radius</label><span class="val" data-value-for="noise.lumRadius">2</span></div>
+            <input type="range" min="1" max="10" step="1" data-param="noise.lumRadius">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Chrominance amount</label><span class="val" data-value-for="noise.chromAmount">0</span></div>
+            <input type="range" min="0" max="100" step="1" data-param="noise.chromAmount">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Chrominance radius</label><span class="val" data-value-for="noise.chromRadius">2</span></div>
+            <input type="range" min="1" max="10" step="1" data-param="noise.chromRadius">
+          </div>
+        </div>
+      </section>
+
+      <!-- SHARPEN -->
+      <section class="panel" data-panel="sharpen">
+        <div class="panel-header"><h2>Sharpen</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="field">
+            <div class="field-row"><label>Amount</label><span class="val" data-value-for="sharpen.amount">0</span></div>
+            <input type="range" min="0" max="200" step="1" data-param="sharpen.amount">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Radius</label><span class="val" data-value-for="sharpen.radius">1</span></div>
+            <input type="range" min="1" max="10" step="1" data-param="sharpen.radius">
+          </div>
+          <div class="field">
+            <div class="field-row"><label>Threshold</label><span class="val" data-value-for="sharpen.threshold">0</span></div>
+            <input type="range" min="0" max="50" step="1" data-param="sharpen.threshold">
+          </div>
+          <div class="hint">Unsharp mask, applied to luminance to avoid color fringing on stars.</div>
+        </div>
+      </section>
+
+      <!-- STARS -->
+      <section class="panel" data-panel="stars">
+        <div class="panel-header"><h2>Stars &amp; color</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="field">
+            <div class="field-row"><label>Saturation boost</label><span class="val" data-value-for="stars.satBoost">0</span></div>
+            <input type="range" min="0" max="150" step="1" data-param="stars.satBoost">
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="protectHighlights" data-param="stars.protectHighlights">
+            <label for="protectHighlights">Protect bright star cores</label>
+          </div>
+          <div class="hint">Boosts color saturation across nebulosity and stars; protecting highlights keeps the brightest star cores from oversaturating.</div>
+        </div>
+      </section>
+
+      <div style="height:20px;"></div>
+    </aside>
+
+    <!-- ===================== VIEWPORT ===================== -->
+    <main class="viewport" id="viewport">
+      <div class="canvas-wrap">
+        <canvas id="mainCanvas" width="800" height="600"></canvas>
+      </div>
+      <div class="empty-state" id="emptyState">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+          <circle cx="28" cy="28" r="1.4" fill="#5fc9c0"/>
+          <circle cx="14" cy="18" r="1" fill="#8b95a7"/>
+          <circle cx="42" cy="14" r="1.2" fill="#8b95a7"/>
+          <circle cx="46" cy="34" r="0.8" fill="#8b95a7"/>
+          <circle cx="10" cy="40" r="1.1" fill="#8b95a7"/>
+          <circle cx="20" cy="46" r="0.8" fill="#8b95a7"/>
+          <circle cx="36" cy="44" r="1" fill="#8b95a7"/>
+          <circle cx="28" cy="28" r="16" stroke="#262d3a" stroke-width="1"/>
+        </svg>
+        <div class="et">No image loaded</div>
+        <div class="es">Open an exposure to begin post-processing — stretching, color, noise, and sharpening tools are on the left.</div>
+        <button id="btnLoadEmpty" class="primary">Open image</button>
+      </div>
+      <div class="zoom-bar" id="zoomBar">
+        <button id="zoomOutBtn" title="Zoom out (–)">−</button>
+        <button id="zoomPctBtn" class="zoom-pct" title="Reset to 100%">100%</button>
+        <button id="zoomInBtn" title="Zoom in (+)">+</button>
+        <div class="zoom-sep"></div>
+        <button id="zoomFitBtn" title="Fit to window (0)">Fit</button>
+        <button id="zoom100Btn" title="Actual size (1)">1:1</button>
+      </div>
+    </main>
+
+    <!-- ===================== INSPECTOR ===================== -->
+    <aside class="inspector">
+      <div class="panel-body-static">
+        <div class="hist-header">
+          <h2>Histogram</h2>
+          <button type="button" id="histScaleToggle" class="hist-toggle-btn" title="Toggle logarithmic / linear vertical scale">Linear</button>
+        </div>
+        <div class="hist-controls">
+          <select id="histChannel" aria-label="Histogram channel" title="Channel">
+            <option value="colors" selected>Colors</option>
+            <option value="rgb">RGB</option>
+            <option value="R">Red</option>
+            <option value="G">Green</option>
+            <option value="B">Blue</option>
+            <option value="L">Luminosity</option>
+          </select>
+          <select id="histView" aria-label="Histogram view" title="View">
+            <option value="compact">Compact view</option>
+            <option value="expanded" selected>Expanded view</option>
+            <option value="all">All channels</option>
+          </select>
+        </div>
+        <div class="hist-wrap" id="histWrap">
+          <canvas id="histCanvas" role="img" aria-label="Image histogram, 256 levels. Drag to select a range of levels."></canvas>
+          <div class="hist-clip hist-clip-lo" id="histClipLo" title="Shadow clipping">
+            <svg viewBox="0 0 10 10"><polygon points="0,10 10,10 5,0" fill="currentColor"/></svg>
+          </div>
+          <div class="hist-clip hist-clip-hi" id="histClipHi" title="Highlight clipping">
+            <svg viewBox="0 0 10 10"><polygon points="0,10 10,10 5,0" fill="currentColor"/></svg>
+          </div>
+        </div>
+        <div class="hist-gradient" id="histGradient"></div>
+        <div class="hist-axis"><span>0</span><span>64</span><span>128</span><span>192</span><span>255</span></div>
+        <div class="hist-stats" id="histStats">
+          <div>
+            <div class="hist-stat"><span>Mean:</span><b id="histStatMean">—</b></div>
+            <div class="hist-stat"><span>Std Dev:</span><b id="histStatStd">—</b></div>
+            <div class="hist-stat"><span>Median:</span><b id="histStatMedian">—</b></div>
+            <div class="hist-stat"><span>Pixels:</span><b id="histStatPixels">—</b></div>
+          </div>
+          <div>
+            <div class="hist-stat"><span>Level:</span><b id="histStatLevel">—</b></div>
+            <div class="hist-stat"><span>Count:</span><b id="histStatCount">—</b></div>
+            <div class="hist-stat"><span>Percentile:</span><b id="histStatPct">—</b></div>
+          </div>
+        </div>
+        <div class="hist-clip-readout">
+          <span id="histClipLoReadout">Shadows: —</span>
+          <span id="histClipHiReadout">Highlights: —</span>
+        </div>
+      </div>
+      <div class="panel-body-static" style="border-top:1px solid var(--border-soft);">
+        <h2>Image</h2>
+        <div class="image-name" id="imageName">—</div>
+        <div class="image-info-row"><label>Dimensions</label><span class="mono" id="imageDims">—</span></div>
+        <div class="image-info-row"><label>Source</label><span class="mono" id="imageSource">—</span></div>
+        <div class="image-info-row"><label>Working precision</label><span class="mono">32-bit float</span></div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const MAX_DIM = 1600;
+
+const state = {
+  imageName: null,
+  width: 0, height: 0,
+  baseFloat: null,   // {width,height,R,G,B} Float32Arrays (0-1) — pipeline input at full working precision, working res
+  params: null,
+  curves: null,
+  history: [],
+  historyIndex: -1,
+  renderScheduled: false,
+  zoom: 1,
+  zoomFitMode: true,
+  tempStretchPreview: false, // view-only aid; intentionally NOT in state.params so it never enters undo history or exports
+  tempStretchAmount: 30,     // 0-100, also view-only
+};
+
+function defaultParams(){
+  return {
+    bg: { enabled:false, strength:50 },
+    statStretch: {
+      enabled:false, targetMedian:25, sigma:50, noBlackClip:false,
+      normalize:false, applyCurves:false, curvesBoost:0,
+      hdrCompress:false, hdrAmount:0, hdrKnee:75,
+    },
+    stretch: { type:'linear', black:0, white:255, mid:128 },
+    levels: {
+      RGB:{ black:0, white:255, gamma:100 },
+      R:{ black:0, white:255, gamma:100 },
+      G:{ black:0, white:255, gamma:100 },
+      B:{ black:0, white:255, gamma:100 },
+    },
+    colorBalance: { temp:0, tint:0, gainR:100, gainG:100, gainB:100 },
+    noise: { lumAmount:0, lumRadius:2, chromAmount:0, chromRadius:2 },
+    sharpen: { amount:0, radius:1, threshold:0 },
+    stars: { satBoost:0, protectHighlights:true },
+  };
+}
+function defaultCurves(){
+  return { L:[[0,0],[1,1]], R:[[0,0],[1,1]], G:[[0,0],[1,1]], B:[[0,0],[1,1]] };
+}
+
+/* ============================================================
+   PARAM PATH HELPERS
+   ============================================================ */
+function getParam(path){
+  return path.split('.').reduce((o,k)=>o[k], state.params);
+}
+function setParam(path, value){
+  const keys = path.split('.');
+  let o = state.params;
+  for(let i=0;i<keys.length-1;i++) o = o[keys[i]];
+  o[keys[keys.length-1]] = value;
+}
+
+/* ============================================================
+   IMAGE MATH HELPERS
+   ============================================================ */
+function clamp01(v){ return v<0?0:(v>1?1:v); }
+function clamp255(v){ return v<0?0:(v>255?255:v); }
+
+function evalStretchAt(x, s, m){
+  let y;
+  switch(s.type){
+    case 'log': { const k=100; y = Math.log(1+k*x)/Math.log(1+k); break; }
+    case 'asinh': { const k=10; y = Math.asinh(k*x)/Math.asinh(k); break; }
+    case 'mtf': {
+      if (x<=0) y=0; else if (x>=1) y=1; else if (Math.abs(x-m)<1e-6) y=0.5;
+      else y = ((m-1)*x) / (((2*m-1)*x) - m);
+      break;
+    }
+    default: y = x;
+  }
+  return y;
+}
+function applyStretchDirect(arr, s){
+  const black = s.black, white = Math.max(s.white, s.black+1);
+  const m = clamp01(s.mid/255);
+  for(let i=0;i<arr.length;i++){
+    let x = (arr[i]*255 - black) / (white - black);
+    x = clamp01(x);
+    arr[i] = clamp01(evalStretchAt(x, s, m));
+  }
+}
+function applyLevelsDirect(arr, l){
+  const gamma = Math.max(l.gamma,1)/100;
+  const black = l.black, white = Math.max(l.white, l.black+1);
+  const invGamma = 1/gamma;
+  for(let i=0;i<arr.length;i++){
+    let x = (arr[i]*255-black)/(white-black);
+    x = clamp01(x);
+    arr[i] = clamp01(Math.pow(x, invGamma));
+  }
+}
+function isIdentityCurve(pts){
+  return pts.length===2 && pts[0][0]===0 && pts[0][1]===0 && pts[1][0]===1 && pts[1][1]===1;
+}
+function evalCurveAt(x, sorted){
+  if (x<=sorted[0][0]) return sorted[0][1];
+  if (x>=sorted[sorted.length-1][0]) return sorted[sorted.length-1][1];
+  let a=sorted[0], b=sorted[sorted.length-1];
+  for(let k=0;k<sorted.length-1;k++){
+    if (x>=sorted[k][0] && x<=sorted[k+1][0]){ a=sorted[k]; b=sorted[k+1]; break; }
+  }
+  const t = (b[0]-a[0])>1e-9 ? (x-a[0])/(b[0]-a[0]) : 0;
+  return a[1] + t*(b[1]-a[1]);
+}
+function applyCurveDirect(arr, pts){
+  const sorted = pts.slice().sort((a,b)=>a[0]-b[0]);
+  for(let i=0;i<arr.length;i++){
+    arr[i] = clamp01(evalCurveAt(clamp01(arr[i]), sorted));
+  }
+}
+function applyLuminanceCurveDirect(R,G,B,pts){
+  const sorted = pts.slice().sort((a,b)=>a[0]-b[0]);
+  for(let i=0;i<R.length;i++){
+    const lum = 0.2126*R[i] + 0.7152*G[i] + 0.0722*B[i];
+    const newLum = clamp01(evalCurveAt(clamp01(lum), sorted));
+    if (lum > 1e-5){
+      const scale = newLum/lum;
+      R[i]*=scale; G[i]*=scale; B[i]*=scale;
+    } else {
+      R[i]=newLum; G[i]=newLum; B[i]=newLum;
+    }
+  }
+}
+function applyColorBalance(R,G,B,cb){
+  const temp = cb.temp/100, tint = cb.tint/100;
+  const gr = cb.gainR/100, gg = cb.gainG/100, gb = cb.gainB/100;
+  const rMul = gr * (1 + temp*0.35);
+  const gMul = gg * (1 + tint*0.35);
+  const bMul = gb * (1 - temp*0.35);
+  for(let i=0;i<R.length;i++){
+    R[i]=clamp01(R[i]*rMul); G[i]=clamp01(G[i]*gMul); B[i]=clamp01(B[i]*bMul);
+  }
+}
+function subtractBackground(R,G,B,w,h,strength){
+  const margin = Math.max(4, Math.round(Math.min(w,h)*0.03));
+  const samplesR=[],samplesG=[],samplesB=[];
+  function sample(x,y){ const i=y*w+x; samplesR.push(R[i]); samplesG.push(G[i]); samplesB.push(B[i]); }
+  const stepX = Math.max(1, Math.floor(w/120));
+  for(let x=0;x<w;x+=stepX){ sample(x,0); sample(x,margin-1<0?0:margin-1); sample(x,h-1); sample(x,Math.max(0,h-margin)); }
+  const stepY = Math.max(1, Math.floor(h/120));
+  for(let y=0;y<h;y+=stepY){ sample(0,y); sample(margin-1<0?0:margin-1,y); sample(w-1,y); sample(Math.max(0,w-margin),y); }
+  function median(arr){ arr.sort((a,b)=>a-b); return arr[Math.floor(arr.length/2)] || 0; }
+  const bR=median(samplesR), bG=median(samplesG), bB=median(samplesB);
+  const amt = strength/100;
+  for(let i=0;i<R.length;i++){
+    R[i]=clamp01(R[i]-bR*amt); G[i]=clamp01(G[i]-bG*amt); B[i]=clamp01(B[i]-bB*amt);
+  }
+}
+
+/* ============================================================
+   MEDIAN STRETCH
+   Estimates a blackpoint from the image's median and a
+   robust (MAD-based) noise estimate, then solve a rational
+   midtone curve so the rescaled data lands on a target median.
+   Percentiles are computed via histogram binning rather than an
+   exact sort — an approximation, but a fast and stable one.
+   ============================================================ */
+function clampRange(v,lo,hi){ return v<lo?lo:(v>hi?hi:v); }
+function arrayMin(data){ let m=Infinity; for(let i=0;i<data.length;i++) if(data[i]<m) m=data[i]; return m; }
+function histogramPercentile(data, p, bins){
+  bins = bins||8192;
+  let min=Infinity, max=-Infinity;
+  for(let i=0;i<data.length;i++){ const v=data[i]; if(v<min)min=v; if(v>max)max=v; }
+  if (!isFinite(min) || !isFinite(max)) return 0;
+  if (max<=min) return min;
+  const hist = new Float64Array(bins);
+  const scale = (bins-1)/(max-min);
+  for(let i=0;i<data.length;i++){
+    let b = Math.round((data[i]-min)*scale);
+    if (b<0) b=0; else if (b>bins-1) b=bins-1;
+    hist[b]++;
+  }
+  const target = data.length*p;
+  let cum=0;
+  for(let i=0;i<bins;i++){ cum+=hist[i]; if (cum>=target) return min+i/scale; }
+  return max;
+}
+function robustSigmaLowerHalf(data, precomputedMedian){
+  const med = precomputedMedian!==undefined ? precomputedMedian : histogramPercentile(data,0.5);
+  let count=0;
+  for(let i=0;i<data.length;i++) if (data[i]<=med) count++;
+  let mad;
+  if (count<16){
+    const abs = new Float32Array(data.length);
+    for(let i=0;i<data.length;i++) abs[i]=Math.abs(data[i]-med);
+    mad = histogramPercentile(abs,0.5);
+  } else {
+    const lo = new Float32Array(count);
+    let j=0;
+    for(let i=0;i<data.length;i++) if (data[i]<=med) lo[j++]=data[i];
+    const medLo = histogramPercentile(lo,0.5);
+    const abs = new Float32Array(lo.length);
+    for(let i=0;i<lo.length;i++) abs[i]=Math.abs(lo[i]-medLo);
+    mad = histogramPercentile(abs,0.5);
+  }
+  return 1.4826*mad;
+}
+function computeBlackpointSigma(data, sigma){
+  const med = histogramPercentile(data,0.5);
+  const noise = robustSigmaLowerHalf(data, med);
+  let bp = med - sigma*noise;
+  bp = Math.max(arrayMin(data), bp);
+  bp = Math.min(bp, 0.99);
+  return bp;
+}
+function statStretchCurve(rescaled, medianRescaled, targetMedian){
+  const out = new Float32Array(rescaled.length);
+  for(let i=0;i<rescaled.length;i++){
+    const r = rescaled[i];
+    const num = (medianRescaled-1)*targetMedian*r;
+    let den = medianRescaled*(targetMedian+r-1) - targetMedian*r;
+    if (Math.abs(den)<1e-12) den = 1e-12;
+    out[i] = num/den;
+  }
+  return out;
+}
+function statStretchChannel(data, targetMedian, sigma, noBlackClip){
+  const blackPoint = noBlackClip ? arrayMin(data) : computeBlackpointSigma(data, sigma);
+  const denom = Math.max(1-blackPoint, 1e-12);
+  const rescaled = new Float32Array(data.length);
+  for(let i=0;i<data.length;i++) rescaled[i]=(data[i]-blackPoint)/denom;
+  const medianRescaled = histogramPercentile(rescaled,0.5);
+  return statStretchCurve(rescaled, medianRescaled, targetMedian);
+}
+function statStretchApplyCurvesBoost(data, targetMedian, curvesBoost){
+  const tm=targetMedian, cb=curvesBoost;
+  const p3x = 0.25*(1-tm)+tm, p4x = 0.75*(1-tm)+tm;
+  const p3y = Math.pow(p3x, 1-cb), p4y = Math.pow(Math.pow(p4x, 1-cb), 1-cb);
+  const xs=[0, 0.5*tm, tm, p3x, p4x, 1], ys=[0, 0.5*tm, tm, p3y, p4y, 1];
+  const out = new Float32Array(data.length);
+  for(let i=0;i<data.length;i++){
+    const x = data[i];
+    let y;
+    if (x<=xs[0]) y=ys[0];
+    else if (x>=xs[xs.length-1]) y=ys[ys.length-1];
+    else {
+      y = ys[ys.length-1];
+      for(let k=0;k<xs.length-1;k++){
+        if (x>=xs[k] && x<=xs[k+1]){ const t=(xs[k+1]-xs[k])>1e-12?(x-xs[k])/(xs[k+1]-xs[k]):0; y=ys[k]+t*(ys[k+1]-ys[k]); break; }
+      }
+    }
+    out[i] = clamp01(y);
+  }
+  return out;
+}
+function statStretchHdrHighlights(data, amount, knee){
+  const a = clampRange(amount,0,1);
+  if (a<=0) return data.slice();
+  const k = clampRange(knee,0,0.99);
+  const m1 = clampRange(1+4*a,1,5);
+  const out = new Float32Array(data.length);
+  for(let i=0;i<data.length;i++){
+    const y = data[i];
+    if (y<=k){ out[i]=y; continue; }
+    let t=(y-k)/(1-k); t=clamp01(t);
+    const t2=t*t, t3=t2*t;
+    const h10=t3-2*t2+t, h01=-2*t3+3*t2, h11=t3-t2;
+    const f = clamp01(h10+h01+h11*m1);
+    out[i] = k+(1-k)*f;
+  }
+  return out;
+}
+function statStretchHdrCompress(R,G,B,amount,knee){
+  const a = clampRange(amount,0,1);
+  if (a<=0) return;
+  const n=R.length;
+  const Y = new Float32Array(n);
+  for(let i=0;i<n;i++) Y[i]=0.2126*R[i]+0.7152*G[i]+0.0722*B[i];
+  const Yc = statStretchHdrHighlights(Y,a,knee);
+  const eps=1e-6, softKnee=0.25;
+  for(let i=0;i<n;i++){
+    let s = Yc[i]/(Y[i]+eps);
+    s = s/(1+softKnee*(s-1));
+    R[i]=clamp01(R[i]*s); G[i]=clamp01(G[i]*s); B[i]=clamp01(B[i]*s);
+  }
+}
+function applyStatisticalStretch(R,G,B,p){
+  const n = R.length;
+  const targetMedian = clampRange(p.targetMedian/100, 0.01, 0.99);
+  const sigma = clampRange(p.sigma/10, 0.5, 6.0);
+  const noBlackClip = !!p.noBlackClip;
+  let outR, outG, outB;
+
+  if (p.normalize){
+    const combined = new Float32Array(n*3);
+    combined.set(R,0); combined.set(G,n); combined.set(B,2*n);
+    const blackPoint = noBlackClip ? arrayMin(combined) : computeBlackpointSigma(combined, sigma);
+    const denom = Math.max(1-blackPoint,1e-12);
+    const rescaled = new Float32Array(n*3);
+    for(let i=0;i<n*3;i++) rescaled[i]=(combined[i]-blackPoint)/denom;
+    const medianRescaled = histogramPercentile(rescaled,0.5);
+    const stretched = statStretchCurve(rescaled, medianRescaled, targetMedian);
+    outR = stretched.subarray(0,n).slice();
+    outG = stretched.subarray(n,2*n).slice();
+    outB = stretched.subarray(2*n,3*n).slice();
+  } else {
+    outR = statStretchChannel(R, targetMedian, sigma, noBlackClip);
+    outG = statStretchChannel(G, targetMedian, sigma, noBlackClip);
+    outB = statStretchChannel(B, targetMedian, sigma, noBlackClip);
+  }
+
+  if (p.applyCurves){
+    const curvesBoost = clampRange(p.curvesBoost/100, 0, 1);
+    if (curvesBoost>0){
+      outR = statStretchApplyCurvesBoost(outR, targetMedian, curvesBoost);
+      outG = statStretchApplyCurvesBoost(outG, targetMedian, curvesBoost);
+      outB = statStretchApplyCurvesBoost(outB, targetMedian, curvesBoost);
+    }
+  }
+
+  if (p.hdrCompress){
+    const hdrAmount = clampRange(p.hdrAmount/100, 0, 1);
+    const hdrKnee = clampRange(p.hdrKnee/100, 0.1, 0.95);
+    if (hdrAmount>0) statStretchHdrCompress(outR, outG, outB, hdrAmount, hdrKnee);
+  }
+
+  if (p.normalize){
+    let mx=-Infinity;
+    for(let i=0;i<n;i++){ if(outR[i]>mx)mx=outR[i]; if(outG[i]>mx)mx=outG[i]; if(outB[i]>mx)mx=outB[i]; }
+    if (mx>0){ for(let i=0;i<n;i++){ outR[i]/=mx; outG[i]/=mx; outB[i]/=mx; } }
+  }
+
+  for(let i=0;i<n;i++){ R[i]=clamp01(outR[i]); G[i]=clamp01(outG[i]); B[i]=clamp01(outB[i]); }
+}
+
+function boxBlur(src,w,h,radius){
+  radius = Math.max(0, Math.round(radius));
+  if (radius<=0) return src.slice();
+  const tmp = new Float32Array(w*h), out = new Float32Array(w*h);
+  const size = radius*2+1;
+  const clampIdx=(v,lo,hi)=> v<lo?lo:(v>hi?hi:v);
+  for(let y=0;y<h;y++){
+    const row = y*w;
+    let sum=0;
+    for(let x=-radius;x<=radius;x++) sum += src[row + clampIdx(x,0,w-1)];
+    for(let x=0;x<w;x++){
+      tmp[row+x] = sum/size;
+      const xOut=x-radius, xIn=x+radius+1;
+      sum += src[row+clampIdx(xIn,0,w-1)] - src[row+clampIdx(xOut,0,w-1)];
+    }
+  }
+  for(let x=0;x<w;x++){
+    let sum=0;
+    for(let y=-radius;y<=radius;y++) sum += tmp[clampIdx(y,0,h-1)*w+x];
+    for(let y=0;y<h;y++){
+      out[y*w+x] = sum/size;
+      const yOut=y-radius, yIn=y+radius+1;
+      sum += tmp[clampIdx(yIn,0,h-1)*w+x] - tmp[clampIdx(yOut,0,h-1)*w+x];
+    }
+  }
+  return out;
+}
+function rgbToYCbCr(r,g,b){
+  const Y  =  0.299*r + 0.587*g + 0.114*b;
+  const Cb = -0.168736*r -0.331264*g + 0.5*b + 0.5;
+  const Cr =  0.5*r -0.418688*g -0.081312*b + 0.5;
+  return [Y,Cb,Cr];
+}
+function applyNoiseReduction(R,G,B,w,h,p){
+  const n = R.length;
+  const Y=new Float32Array(n), Cb=new Float32Array(n), Cr=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const c = rgbToYCbCr(R[i],G[i],B[i]);
+    Y[i]=c[0]; Cb[i]=c[1]; Cr[i]=c[2];
+  }
+  if (p.lumAmount>0){
+    const blurred = boxBlur(Y,w,h,p.lumRadius);
+    const amt = p.lumAmount/100;
+    for(let i=0;i<n;i++) Y[i] = Y[i]*(1-amt) + blurred[i]*amt;
+  }
+  if (p.chromAmount>0){
+    const bCb = boxBlur(Cb,w,h,p.chromRadius);
+    const bCr = boxBlur(Cr,w,h,p.chromRadius);
+    const amt = p.chromAmount/100;
+    for(let i=0;i<n;i++){ Cb[i]=Cb[i]*(1-amt)+bCb[i]*amt; Cr[i]=Cr[i]*(1-amt)+bCr[i]*amt; }
+  }
+  for(let i=0;i<n;i++){
+    const y=Y[i], cb=Cb[i]-0.5, cr=Cr[i]-0.5;
+    R[i]=clamp01(y + 1.402*cr);
+    G[i]=clamp01(y - 0.344136*cb - 0.714136*cr);
+    B[i]=clamp01(y + 1.772*cb);
+  }
+}
+function applySharpen(R,G,B,w,h,p){
+  const n = R.length;
+  const Y = new Float32Array(n);
+  for(let i=0;i<n;i++) Y[i] = 0.2126*R[i] + 0.7152*G[i] + 0.0722*B[i];
+  const blurred = boxBlur(Y,w,h,p.radius);
+  const amt = p.amount/100;
+  const thresh = p.threshold/255;
+  for(let i=0;i<n;i++){
+    let diff = Y[i]-blurred[i];
+    if (Math.abs(diff) < thresh) diff = 0;
+    const newY = Y[i] + amt*diff;
+    const scale = Y[i]>1e-5 ? newY/Y[i] : 1;
+    R[i]=clamp01(R[i]*scale); G[i]=clamp01(G[i]*scale); B[i]=clamp01(B[i]*scale);
+  }
+}
+function rgbToHsl(r,g,b){
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h=0,s=0; const l=(max+min)/2;
+  const d = max-min;
+  if (d>1e-6){
+    s = l>0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max){
+      case r: h=(g-b)/d + (g<b?6:0); break;
+      case g: h=(b-r)/d + 2; break;
+      case b: h=(r-g)/d + 4; break;
+    }
+    h/=6;
+  }
+  return [h,s,l];
+}
+function hue2rgb(p,q,t){
+  if (t<0) t+=1; if (t>1) t-=1;
+  if (t<1/6) return p+(q-p)*6*t;
+  if (t<1/2) return q;
+  if (t<2/3) return p+(q-p)*(2/3-t)*6;
+  return p;
+}
+function hslToRgb(h,s,l){
+  if (s<1e-6) return [l,l,l];
+  const q = l<0.5 ? l*(1+s) : l+s-l*s;
+  const p = 2*l-q;
+  return [hue2rgb(p,q,h+1/3), hue2rgb(p,q,h), hue2rgb(p,q,h-1/3)];
+}
+function smoothstep(a,b,x){ const t=clamp01((x-a)/(b-a)); return t*t*(3-2*t); }
+function applySaturationBoost(R,G,B,p){
+  const amt = p.satBoost/100;
+  for(let i=0;i<R.length;i++){
+    const [h,s,l] = rgbToHsl(R[i],G[i],B[i]);
+    const weight = p.protectHighlights ? (1 - smoothstep(0.82,1.0,l)) : 1;
+    const ns = clamp01(s*(1 + amt*weight));
+    const [r2,g2,b2] = hslToRgb(h,ns,l);
+    R[i]=r2; G[i]=g2; B[i]=b2;
+  }
+}
+
+/* ============================================================
+   PIPELINE
+   ------------------------------------------------------------
+   Split into two stages so the Curves editor can show a real
+   histogram of the data as it arrives at the Curves step (after
+   Background/Statistical Stretch/Stretch/Levels, before Curves
+   itself) — the same "histogram behind the tone curve" view used
+   by Curves tools in Photoshop/RawTherapee/etc.
+   ============================================================ */
+function computePreCurveFloat(sourceFloat, params){
+  const w = sourceFloat.width, h = sourceFloat.height;
+  const R = sourceFloat.R.slice(), G = sourceFloat.G.slice(), B = sourceFloat.B.slice();
+
+  if (params.bg.enabled) subtractBackground(R,G,B,w,h,params.bg.strength);
+
+  if (params.statStretch.enabled) applyStatisticalStretch(R,G,B,params.statStretch);
+
+  applyStretchDirect(R, params.stretch);
+  applyStretchDirect(G, params.stretch);
+  applyStretchDirect(B, params.stretch);
+
+  applyLevelsDirect(R, params.levels.RGB);
+  applyLevelsDirect(G, params.levels.RGB);
+  applyLevelsDirect(B, params.levels.RGB);
+  applyLevelsDirect(R, params.levels.R);
+  applyLevelsDirect(G, params.levels.G);
+  applyLevelsDirect(B, params.levels.B);
+
+  return { width:w, height:h, R, G, B };
+}
+function computePostCurveFloat(preFloat, params, curves){
+  const { width:w, height:h } = preFloat;
+  const R = preFloat.R.slice(), G = preFloat.G.slice(), B = preFloat.B.slice();
+
+  if (!isIdentityCurve(curves.L)) applyLuminanceCurveDirect(R,G,B, curves.L);
+  if (!isIdentityCurve(curves.R)) applyCurveDirect(R, curves.R);
+  if (!isIdentityCurve(curves.G)) applyCurveDirect(G, curves.G);
+  if (!isIdentityCurve(curves.B)) applyCurveDirect(B, curves.B);
+
+  applyColorBalance(R,G,B,params.colorBalance);
+
+  if (params.noise.lumAmount>0 || params.noise.chromAmount>0) applyNoiseReduction(R,G,B,w,h,params.noise);
+  if (params.sharpen.amount>0) applySharpen(R,G,B,w,h,params.sharpen);
+  if (params.stars.satBoost>0) applySaturationBoost(R,G,B,params.stars);
+
+  for(let i=0;i<R.length;i++){ R[i]=clamp01(R[i]); G[i]=clamp01(G[i]); B[i]=clamp01(B[i]); }
+  return { width:w, height:h, R, G, B };
+}
+function computePipeline(sourceFloat, params, curves){
+  const pre = computePreCurveFloat(sourceFloat, params);
+  return computePostCurveFloat(pre, params, curves);
+}
+function floatToImageData8bit(floatImg){
+  const { width:w, height:h, R, G, B } = floatImg;
+  const n = w*h;
+  const out = new Uint8ClampedArray(n*4);
+  for(let i=0;i<n;i++){
+    out[i*4]=clamp255(R[i]*255+0.5);
+    out[i*4+1]=clamp255(G[i]*255+0.5);
+    out[i*4+2]=clamp255(B[i]*255+0.5);
+    out[i*4+3]=255;
+  }
+  return new ImageData(out,w,h);
+}
+
+/* ============================================================
+   HISTOGRAM
+   ------------------------------------------------------------
+   Photoshop-style histogram of the post-pipeline float image
+   (the same data that gets displayed/exported).
+
+   - 256 true levels. Each pixel is binned at round(v*255), i.e.
+     exactly the 8-bit value that a PNG export would contain.
+   - Channel menu: Colors (R/G/B added together, so overlaps show
+     as cyan / magenta / yellow / white), RGB (all three channels
+     pooled, grey), Red, Green, Blue, Luminosity.
+   - View menu: Compact (plot only), Expanded (plot + statistics),
+     All channels (RGB, R, G, B and Luminosity stacked).
+   - Vertical scale ignores the two end levels (0 and 255), so a
+     big clipped spike runs off the top of the plot instead of
+     flattening everything else. Linear by default; the Log
+     button is kept because it helps a lot on unstretched data.
+   - Hover shows Level / Count / Percentile (cumulative). Drag to
+     select a range of levels: the range is highlighted and the
+     readout shows the level span, the pixels in it and their share
+     of the image. Click without dragging to clear the selection.
+   - The canvas is sized in device pixels and drawn one column per
+     device pixel, so it stays crisp and, when the panel is narrower
+     than 256 px, a narrow spike is never lost (columns take the
+     tallest level they cover).
+   ============================================================ */
+const histCanvas = document.getElementById('histCanvas');
+const histWrap = document.getElementById('histWrap');
+const histScaleToggle = document.getElementById('histScaleToggle');
+const histChannelSel = document.getElementById('histChannel');
+const histViewSel = document.getElementById('histView');
+const histGradient = document.getElementById('histGradient');
+const histStatsEl = document.getElementById('histStats');
+const histStatEls = {
+  mean: document.getElementById('histStatMean'),
+  std: document.getElementById('histStatStd'),
+  median: document.getElementById('histStatMedian'),
+  pixels: document.getElementById('histStatPixels'),
+  level: document.getElementById('histStatLevel'),
+  count: document.getElementById('histStatCount'),
+  pct: document.getElementById('histStatPct')
+};
+const histClipLo = document.getElementById('histClipLo');
+const histClipHi = document.getElementById('histClipHi');
+const histClipLoReadout = document.getElementById('histClipLoReadout');
+const histClipHiReadout = document.getElementById('histClipHiReadout');
+
+const HIST_LEVELS = 256;
+const HIST_CLIP_WARN_FRACTION = 0.001; // >0.1% of pixels pinned at level 0 / 255 gets flagged
+// Channel tints are chosen so that adding them (canvas 'lighter') gives clean secondaries:
+// R+G = yellow, G+B = cyan, R+B = magenta, R+G+B = white.
+const HIST_TINTS = { R:[228,48,48], G:[48,208,72], B:[52,96,240], GRAY:[199,204,214] };
+const HIST_ALL_ROWS = ['rgb','R','G','B','L'];
+const HIST_ROW_LABELS = { colors:'Colors', rgb:'RGB', R:'Red', G:'Green', B:'Blue', L:'Luminosity' };
+const HIST_GRADIENTS = {
+  gray:'linear-gradient(90deg,#000,#fff)',
+  R:'linear-gradient(90deg,#000,#ff3b3b)',
+  G:'linear-gradient(90deg,#000,#3bdc5a)',
+  B:'linear-gradient(90deg,#000,#4a7dff)'
+};
+const HIST_SEL_BG = '#c9ced8';   // highlighted range: light background ...
+const HIST_SEL_FG = '#171c27';   // ... with dark bars, like Photoshop's inverted selection
+
+let histLogScale = false;
+let histChannel = histChannelSel.value || 'colors';
+let histView = histViewSel.value || 'expanded';
+let histData = null;   // level counts from the last render; reused on resize/hover/selection
+let histSel = null;    // { a, b } inclusive level range, or null
+let histHover = -1;    // level under the pointer, or -1
+let histDrag = null;   // { anchor, startX, moved } while the pointer is down
+let histColors = null; // background / divider colours read once from the CSS theme
+const histLayer = document.createElement('canvas'); // offscreen layer where channels are added together
+
+function resizeHistCanvas(){
+  const cw = histCanvas.clientWidth, ch = histCanvas.clientHeight;
+  if (!cw || !ch) return false;
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(cw*dpr));
+  const h = Math.max(1, Math.round(ch*dpr));
+  if (histCanvas.width!==w) histCanvas.width = w;
+  if (histCanvas.height!==h) histCanvas.height = h;
+  return true;
+}
+
+function computeHistogramData(floatImg){
+  const { R, G, B } = floatImg;
+  const N = HIST_LEVELS, top = N-1;
+  const r=new Float64Array(N), g=new Float64Array(N), b=new Float64Array(N);
+  const l=new Float64Array(N), rgb=new Float64Array(N);
+  const n = R.length;
+  for(let i=0;i<n;i++){
+    const rv=R[i], gv=G[i], bv=B[i];
+    let k = (rv*top+0.5)|0; r[k<0?0:(k>top?top:k)]++;
+    k = (gv*top+0.5)|0;     g[k<0?0:(k>top?top:k)]++;
+    k = (bv*top+0.5)|0;     b[k<0?0:(k>top?top:k)]++;
+    k = ((0.2126*rv+0.7152*gv+0.0722*bv)*top+0.5)|0; l[k<0?0:(k>top?top:k)]++;
+  }
+  for(let i=0;i<N;i++) rgb[i] = r[i]+g[i]+b[i];
+  // Clipping: fraction of all pixels sitting at level 0 / 255 — the worst offender across R/G/B,
+  // since one blown channel still clips.
+  const loClip = n>0 ? Math.max(r[0],g[0],b[0]) / n : 0;
+  const hiClip = n>0 ? Math.max(r[top],g[top],b[top]) / n : 0;
+  return { n, r,g,b,l,rgb, loClip, hiClip, statsCache:{} };
+}
+
+function histArrayFor(key){
+  const d = histData;
+  return key==='R' ? d.r : key==='G' ? d.g : key==='B' ? d.b : key==='L' ? d.l : d.rgb;
+}
+function histSeriesFor(key){
+  const d = histData;
+  switch(key){
+    case 'colors': return [ {arr:d.r,tint:HIST_TINTS.R}, {arr:d.g,tint:HIST_TINTS.G}, {arr:d.b,tint:HIST_TINTS.B} ];
+    case 'R': return [ {arr:d.r,tint:HIST_TINTS.R} ];
+    case 'G': return [ {arr:d.g,tint:HIST_TINTS.G} ];
+    case 'B': return [ {arr:d.b,tint:HIST_TINTS.B} ];
+    case 'L': return [ {arr:d.l,tint:HIST_TINTS.GRAY} ];
+    default:  return [ {arr:d.rgb,tint:HIST_TINTS.GRAY} ];
+  }
+}
+
+// Tallest level, ignoring 0 and 255 so end spikes clip off the top of the plot.
+function histScaleMax(series){
+  let inner=0, all=0;
+  for(const s of series){
+    const a = s.arr;
+    for(let i=0;i<HIST_LEVELS;i++){
+      const v = a[i];
+      if (v>all) all=v;
+      if (i>0 && i<HIST_LEVELS-1 && v>inner) inner=v;
+    }
+  }
+  return inner>0 ? inner : Math.max(1, all);
+}
+
+// Mean / std dev / median of one channel (Colors uses the pooled RGB counts, as in Photoshop).
+function histStatsFor(key){
+  const ck = key==='colors' ? 'rgb' : key;
+  const cache = histData.statsCache;
+  if (cache[ck]) return cache[ck];
+  const arr = histArrayFor(ck);
+  let total=0, sum=0;
+  for(let i=0;i<HIST_LEVELS;i++){ total+=arr[i]; sum+=i*arr[i]; }
+  const mean = total>0 ? sum/total : 0;
+  let varSum=0;
+  for(let i=0;i<HIST_LEVELS;i++){ const d=i-mean; varSum+=d*d*arr[i]; }
+  const std = total>0 ? Math.sqrt(varSum/total) : 0;
+  let median=0;
+  if (total>0){
+    let cum=0; const half=total/2;
+    for(let i=0;i<HIST_LEVELS;i++){ cum+=arr[i]; if (cum>=half){ median=i; break; } }
+  }
+  return (cache[ck] = { arr, total, mean, std, median });
+}
+
+function formatClipPct(frac){
+  const pct = frac*100;
+  if (pct<=0) return '0%';
+  if (pct<0.1) return '<0.1%';
+  return pct.toFixed(1)+'%';
+}
+function fmtCount(v){ return Math.round(v).toLocaleString('en-US'); }
+
+function updateHistClipUI(){
+  histClipLo.classList.remove('warn');
+  histClipHi.classList.remove('warn');
+  histClipLoReadout.classList.remove('warn');
+  histClipHiReadout.classList.remove('warn');
+  if (!histData){
+    histClipLoReadout.textContent = 'Shadows: —';
+    histClipHiReadout.textContent = 'Highlights: —';
+    return;
+  }
+  const { loClip, hiClip } = histData;
+  histClipLoReadout.textContent = 'Shadows: '+formatClipPct(loClip);
+  histClipHiReadout.textContent = 'Highlights: '+formatClipPct(hiClip);
+  if (loClip > HIST_CLIP_WARN_FRACTION){ histClipLo.classList.add('warn'); histClipLoReadout.classList.add('warn'); }
+  if (hiClip > HIST_CLIP_WARN_FRACTION){ histClipHi.classList.add('warn'); histClipHiReadout.classList.add('warn'); }
+}
+
+function updateHistReadouts(){
+  const S = histStatEls;
+  if (!histData){
+    Object.keys(S).forEach(k=>{ S[k].textContent = '—'; });
+    return;
+  }
+  const st = histStatsFor(histChannel);
+  S.mean.textContent = st.mean.toFixed(2);
+  S.std.textContent = st.std.toFixed(2);
+  S.median.textContent = String(st.median);
+  S.pixels.textContent = fmtCount(histData.n);
+
+  // What the Level / Count / Percentile readout describes:
+  //   dragging  -> the range being dragged
+  //   hovering  -> the single level under the pointer (percentile = cumulative, at or below it)
+  //   otherwise -> the kept selection, if any (percentile = share of pixels inside the range)
+  let a=-1, b=-1, cumulative=false;
+  if (histDrag && histSel){ a=histSel.a; b=histSel.b; }
+  else if (histHover>=0){ a=b=histHover; cumulative=true; }
+  else if (histSel){ a=histSel.a; b=histSel.b; }
+  if (a<0){
+    S.level.textContent = S.count.textContent = S.pct.textContent = '—';
+    return;
+  }
+  const arr = st.arr;
+  let count=0;
+  for(let i=a;i<=b;i++) count += arr[i];
+  let pct;
+  if (cumulative){
+    let c=0;
+    for(let i=0;i<=a;i++) c += arr[i];
+    pct = st.total>0 ? c/st.total*100 : 0;
+  } else {
+    pct = st.total>0 ? count/st.total*100 : 0;
+  }
+  S.level.textContent = a===b ? String(a) : a+'–'+b;
+  S.count.textContent = fmtCount(count);
+  S.pct.textContent = pct.toFixed(2)+'%';
+}
+
+// Bar height (in device px) for every device-pixel column of the plot.
+function histColumns(arr, W, rowH, max){
+  const N = HIST_LEVELS;
+  const cols = new Uint16Array(W);
+  const logMax = Math.log(max+1);
+  for(let x=0;x<W;x++){
+    let v;
+    if (W>=N){
+      v = arr[Math.min(N-1, Math.floor((x+0.5)*N/W))];
+    } else {
+      // Narrower than 256 columns: several levels share a column, show the tallest of them.
+      const s = Math.floor(x*N/W);
+      const e = Math.max(s, Math.ceil((x+1)*N/W)-1);
+      v = 0;
+      for(let i=s;i<=e && i<N;i++) if (arr[i]>v) v=arr[i];
+    }
+    let f = histLogScale ? Math.log(v+1)/logMax : v/max;
+    if (f>1) f=1;
+    cols[x] = Math.round(f*rowH);
+  }
+  return cols;
+}
+
+function drawHistRow(ctx, key, y, h, W, dpr, labeled){
+  const series = histSeriesFor(key);
+  const max = histScaleMax(series);
+  const colsList = series.map(s=>histColumns(s.arr, W, h, max));
+
+  // Channels are added together on an offscreen layer so overlaps mix like light (Colors mode).
+  if (histLayer.width!==W || histLayer.height!==h){ histLayer.width=W; histLayer.height=h; }
+  const lx = histLayer.getContext('2d');
+  lx.globalCompositeOperation = 'source-over';
+  lx.clearRect(0,0,W,h);
+  lx.globalCompositeOperation = 'lighter';
+  series.forEach((s,si)=>{
+    const cols = colsList[si];
+    lx.fillStyle = 'rgb('+s.tint[0]+','+s.tint[1]+','+s.tint[2]+')';
+    lx.beginPath();
+    for(let x=0;x<W;x++){ const c=cols[x]; if (c>0) lx.rect(x, h-c, 1, c); }
+    lx.fill();
+  });
+  ctx.drawImage(histLayer, 0, y);
+
+  // Selected range: light band with dark bars.
+  if (histSel){
+    const xa = Math.floor(histSel.a*W/HIST_LEVELS);
+    const xb = Math.min(W, Math.ceil((histSel.b+1)*W/HIST_LEVELS));
+    ctx.save();
+    ctx.beginPath(); ctx.rect(xa, y, xb-xa, h); ctx.clip();
+    ctx.fillStyle = HIST_SEL_BG;
+    ctx.fillRect(xa, y, xb-xa, h);
+    ctx.fillStyle = HIST_SEL_FG;
+    ctx.beginPath();
+    colsList.forEach(cols=>{
+      for(let x=xa;x<xb;x++){ const c=cols[x]; if (c>0) ctx.rect(x, y+h-c, 1, c); }
+    });
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Hover marker: inverts whatever it crosses, so it reads on both dark and highlighted areas.
+  if (histHover>=0){
+    const lw = Math.max(1, Math.round(dpr));
+    const x = clampRange(Math.floor((histHover+0.5)*W/HIST_LEVELS - lw/2), 0, W-lw);
+    ctx.save();
+    ctx.globalCompositeOperation = 'difference';
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x, y, lw, h);
+    ctx.restore();
+  }
+
+  if (labeled){
+    const fs = Math.round(9*dpr);
+    ctx.save();
+    ctx.font = fs+'px "IBM Plex Mono", ui-monospace, monospace';
+    ctx.textBaseline = 'top';
+    const label = HIST_ROW_LABELS[key];
+    const pad = Math.round(3*dpr);
+    const tx = Math.round(24*dpr), ty = y+Math.round(4*dpr);
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(10,14,20,.72)';
+    ctx.fillRect(tx-pad, ty-Math.round(2*dpr), tw+pad*2, fs+Math.round(4*dpr));
+    ctx.fillStyle = key===(histChannel==='colors' ? 'rgb' : histChannel) ? '#e6e9ef' : '#8b95a7';
+    ctx.fillText(label, tx, ty);
+    ctx.restore();
+  }
+}
+
+function renderHistogram(){
+  updateHistClipUI();
+  updateHistReadouts();
+  if (!resizeHistCanvas()) return;
+  const ctx = histCanvas.getContext('2d');
+  const W = histCanvas.width, H = histCanvas.height;
+  const dpr = window.devicePixelRatio || 1;
+  if (!histColors){
+    const cs = getComputedStyle(document.documentElement);
+    histColors = {
+      bg: cs.getPropertyValue('--bg-panel-alt').trim() || '#171c27',
+      line: cs.getPropertyValue('--border').trim() || '#262d3a'
+    };
+  }
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = histColors.bg;
+  ctx.fillRect(0,0,W,H);
+  if (!histData) return;
+
+  const keys = histView==='all' ? HIST_ALL_ROWS : [histChannel];
+  const gap = keys.length>1 ? Math.max(1, Math.round(dpr)) : 0;
+  const rowH = Math.floor((H - gap*(keys.length-1)) / keys.length);
+  keys.forEach((key,i)=> drawHistRow(ctx, key, i*(rowH+gap), rowH, W, dpr, keys.length>1));
+  if (gap){
+    ctx.fillStyle = histColors.line;
+    for(let i=0;i<keys.length-1;i++) ctx.fillRect(0, i*(rowH+gap)+rowH, W, gap);
+  }
+}
+
+function drawHistogram(floatImg){
+  if (floatImg) histData = computeHistogramData(floatImg);
+  renderHistogram();
+}
+
+/* ---- controls ---- */
+function updateHistGradient(){
+  const k = histView==='all' ? 'rgb' : histChannel;
+  histGradient.style.background = HIST_GRADIENTS[(k==='R'||k==='G'||k==='B') ? k : 'gray'];
+}
+function applyHistViewUI(){
+  histWrap.classList.toggle('all', histView==='all');
+  histStatsEl.classList.toggle('hidden', histView==='compact');
+  updateHistGradient();
+}
+histScaleToggle.textContent = histLogScale ? 'Log' : 'Linear';
+histScaleToggle.classList.toggle('active', histLogScale);
+applyHistViewUI();
+
+histScaleToggle.addEventListener('click', ()=>{
+  histLogScale = !histLogScale;
+  histScaleToggle.textContent = histLogScale ? 'Log' : 'Linear';
+  histScaleToggle.classList.toggle('active', histLogScale);
+  renderHistogram();
+});
+histChannelSel.addEventListener('change', ()=>{
+  histChannel = histChannelSel.value;
+  updateHistGradient();
+  renderHistogram();
+});
+histViewSel.addEventListener('change', ()=>{
+  histView = histViewSel.value;
+  applyHistViewUI();
+  renderHistogram();
+});
+
+/* ---- hover + drag-to-select ---- */
+function histLevelFromEvent(e){
+  const rect = histCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left - histCanvas.clientLeft;
+  const frac = clampRange(x / (histCanvas.clientWidth || 1), 0, 0.999999);
+  return Math.floor(frac*HIST_LEVELS);
+}
+histCanvas.addEventListener('pointerdown', (e)=>{
+  if (e.button!==0 || !histData) return;
+  const lv = histLevelFromEvent(e);
+  histDrag = { anchor:lv, startX:e.clientX, moved:false };
+  histHover = lv;
+  try{ histCanvas.setPointerCapture(e.pointerId); }catch(_){}
+  renderHistogram();
+});
+histCanvas.addEventListener('pointermove', (e)=>{
+  if (!histData) return;
+  const lv = histLevelFromEvent(e);
+  histHover = lv;
+  if (histDrag){
+    if (histDrag.moved || Math.abs(e.clientX-histDrag.startX) >= 3){
+      histDrag.moved = true;
+      histSel = { a:Math.min(histDrag.anchor, lv), b:Math.max(histDrag.anchor, lv) };
+    }
+  }
+  renderHistogram();
+});
+histCanvas.addEventListener('pointerup', (e)=>{
+  if (!histDrag) return;
+  if (!histDrag.moved) histSel = null; // a plain click clears the selection
+  histDrag = null;
+  try{ histCanvas.releasePointerCapture(e.pointerId); }catch(_){}
+  const rect = histCanvas.getBoundingClientRect();
+  const inside = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
+  if (e.pointerType!=='mouse' || !inside) histHover = -1;
+  renderHistogram();
+});
+histCanvas.addEventListener('pointercancel', ()=>{
+  histDrag = null; histHover = -1;
+  renderHistogram();
+});
+histCanvas.addEventListener('pointerleave', ()=>{
+  if (histDrag) return; // keep tracking while a drag is captured
+  histHover = -1;
+  renderHistogram();
+});
+
+let histResizePending = false;
+window.addEventListener('resize', ()=>{
+  if (histResizePending) return;
+  histResizePending = true;
+  requestAnimationFrame(()=>{ histResizePending=false; renderHistogram(); });
+});
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const mainCanvas = document.getElementById('mainCanvas');
+const mainCtx = mainCanvas.getContext('2d');
+const emptyState = document.getElementById('emptyState');
+
+/* View-only helper for the "Temporary stretch" toggle in the Background panel.
+   Deliberately NOT statistics-based (an earlier version reused the Median Stretch
+   engine here, which solves for a target median — but on 8-bit data with a large
+   flat-black background, that median can land exactly on 0 and the formula
+   degenerates to output exactly 1.0 for every non-black pixel: a hard white
+   blowout, not a gentle boost). This version is a plain per-pixel blend between
+   the untouched image and a fixed Asinh curve (the same formula the Stretch
+   panel's "Asinh" option uses), so it has no dependence on image statistics and
+   cannot blow out no matter what the image looks like — amount=0 is a no-op,
+   amount=100 is the full curve, and everything in between is a linear blend. */
+function applyTempStretchForPreview(imgData, amountPct){
+  const frac = clampRange(amountPct===undefined?30:amountPct, 0, 100)/100;
+  if (frac<=0) return imgData;
+  const w = imgData.width, h = imgData.height;
+  const src = imgData.data;
+  const n = w*h;
+  const K = 100; // fixed reference curve strength; Amount blends toward this
+  const denomAsinh = Math.asinh(K);
+  const out = new Uint8ClampedArray(src.length);
+  for(let i=0;i<n;i++){
+    for(let c=0;c<3;c++){
+      const x = src[i*4+c]/255;
+      const stretched = Math.asinh(K*x)/denomAsinh;
+      const y = (1-frac)*x + frac*stretched;
+      out[i*4+c] = clamp255(Math.round(y*255));
+    }
+    out[i*4+3] = src[i*4+3];
+  }
+  return new ImageData(out,w,h);
+}
+
+let lastRenderedFloat = null;
+let lastCurveHistData = null; // per-channel bin counts of the data as it enters the Curves step
+
+function computeCurveHistograms(floatImg){
+  const { R, G, B } = floatImg;
+  const n = R.length;
+  const bins = 256;
+  const r=new Float64Array(bins), g=new Float64Array(bins), b=new Float64Array(bins), l=new Float64Array(bins);
+  for(let i=0;i<n;i++){
+    const rv=R[i], gv=G[i], bv=B[i];
+    r[Math.min(bins-1,Math.max(0,Math.round(rv*(bins-1))))]++;
+    g[Math.min(bins-1,Math.max(0,Math.round(gv*(bins-1))))]++;
+    b[Math.min(bins-1,Math.max(0,Math.round(bv*(bins-1))))]++;
+    l[Math.min(bins-1,Math.max(0,Math.round((0.2126*rv+0.7152*gv+0.0722*bv)*(bins-1))))]++;
+  }
+  return { L:l, R:r, G:g, B:b, n, bins };
+}
+
+function render(){
+  if (!state.baseFloat){
+    emptyState.style.display='flex';
+    mainCanvas.style.display='none';
+    zoomBar.classList.remove('visible');
+    return;
+  }
+  emptyState.style.display='none';
+  mainCanvas.style.display='block';
+  zoomBar.classList.add('visible');
+  const pre = computePreCurveFloat(state.baseFloat, state.params);
+  lastCurveHistData = computeCurveHistograms(pre);
+  Object.keys(curveCanvases).forEach(ch=>drawCurveEditor(ch));
+  const result = computePostCurveFloat(pre, state.params, state.curves);
+  lastRenderedFloat = result;
+  mainCanvas.width = result.width;
+  mainCanvas.height = result.height;
+  const display8 = floatToImageData8bit(result);
+  const displayData = state.tempStretchPreview ? applyTempStretchForPreview(display8, state.tempStretchAmount) : display8;
+  mainCtx.putImageData(displayData,0,0);
+  drawHistogram(result);
+  applyZoomToCanvas();
+}
+function scheduleRender(){
+  if (state.renderScheduled) return;
+  state.renderScheduled = true;
+  requestAnimationFrame(()=>{ state.renderScheduled=false; render(); });
+}
+
+/* ============================================================
+   ZOOM & PAN
+   ============================================================ */
+const ZOOM_MIN = 0.05, ZOOM_MAX = 8;
+const viewport = document.getElementById('viewport');
+const zoomBar = document.getElementById('zoomBar');
+const zoomOutBtn = document.getElementById('zoomOutBtn');
+const zoomInBtn = document.getElementById('zoomInBtn');
+const zoomPctBtn = document.getElementById('zoomPctBtn');
+const zoomFitBtn = document.getElementById('zoomFitBtn');
+const zoom100Btn = document.getElementById('zoom100Btn');
+
+function clampZoom(v){ return v<ZOOM_MIN?ZOOM_MIN:(v>ZOOM_MAX?ZOOM_MAX:v); }
+
+function computeFitZoom(){
+  if (!state.width || !state.height) return 1;
+  const pad = 48; // 24px padding on each side of .canvas-wrap
+  const availW = Math.max(20, viewport.clientWidth - pad);
+  const availH = Math.max(20, viewport.clientHeight - pad);
+  return clampZoom(Math.min(availW/state.width, availH/state.height));
+}
+
+function updateZoomUI(){
+  zoomPctBtn.textContent = Math.round(state.zoom*100)+'%';
+  zoomOutBtn.disabled = !state.baseFloat || state.zoom<=ZOOM_MIN+1e-6;
+  zoomInBtn.disabled = !state.baseFloat || state.zoom>=ZOOM_MAX-1e-6;
+}
+
+function applyZoomToCanvas(){
+  if (!state.baseFloat) return;
+  mainCanvas.style.width = Math.round(mainCanvas.width*state.zoom)+'px';
+  mainCanvas.style.height = Math.round(mainCanvas.height*state.zoom)+'px';
+  mainCanvas.style.imageRendering = state.zoom > 1 ? 'pixelated' : 'auto';
+  updateZoomUI();
+}
+
+function setZoom(z){
+  state.zoom = clampZoom(z);
+  state.zoomFitMode = false;
+  applyZoomToCanvas();
+}
+function zoomToFit(){
+  state.zoom = computeFitZoom();
+  state.zoomFitMode = true;
+  applyZoomToCanvas();
+}
+function zoomTo100(){
+  setZoom(1);
+}
+function stepZoom(dir){
+  setZoom(state.zoom * (dir>0 ? 1.25 : 0.8));
+}
+
+zoomInBtn.addEventListener('click', ()=>stepZoom(1));
+zoomOutBtn.addEventListener('click', ()=>stepZoom(-1));
+zoomPctBtn.addEventListener('click', zoomTo100);
+zoomFitBtn.addEventListener('click', zoomToFit);
+zoom100Btn.addEventListener('click', zoomTo100);
+
+/* Ctrl/Cmd + wheel zooms, centered roughly on the cursor. Plain wheel keeps native scrolling (panning). */
+viewport.addEventListener('wheel', (e)=>{
+  if (!state.baseFloat) return;
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  const rect = viewport.getBoundingClientRect();
+  const oldScrollW = viewport.scrollWidth, oldScrollH = viewport.scrollHeight;
+  const ratioX = (viewport.scrollLeft + (e.clientX-rect.left)) / oldScrollW;
+  const ratioY = (viewport.scrollTop + (e.clientY-rect.top)) / oldScrollH;
+  const factor = Math.exp(-e.deltaY * 0.0015);
+  setZoom(state.zoom * factor);
+  requestAnimationFrame(()=>{
+    viewport.scrollLeft = ratioX*viewport.scrollWidth - (e.clientX-rect.left);
+    viewport.scrollTop = ratioY*viewport.scrollHeight - (e.clientY-rect.top);
+  });
+}, { passive:false });
+
+/* Drag to pan */
+let isPanning = false, panStartX=0, panStartY=0, panScrollLeft=0, panScrollTop=0;
+mainCanvas.addEventListener('pointerdown', (e)=>{
+  if (e.button!==0 || !state.baseFloat) return;
+  isPanning = true;
+  panStartX = e.clientX; panStartY = e.clientY;
+  panScrollLeft = viewport.scrollLeft; panScrollTop = viewport.scrollTop;
+  mainCanvas.setPointerCapture(e.pointerId);
+});
+mainCanvas.addEventListener('pointermove', (e)=>{
+  if (!isPanning) return;
+  viewport.scrollLeft = panScrollLeft - (e.clientX-panStartX);
+  viewport.scrollTop = panScrollTop - (e.clientY-panStartY);
+});
+function endPan(){ isPanning = false; }
+mainCanvas.addEventListener('pointerup', endPan);
+mainCanvas.addEventListener('pointercancel', endPan);
+
+/* Keyboard shortcuts: +/- zoom, 0 fit, 1 actual size (ignored while typing in a field) */
+document.addEventListener('keydown', (e)=>{
+  if (!state.baseFloat) return;
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if (tag==='INPUT' || tag==='SELECT' || tag==='TEXTAREA') return;
+  if (e.key==='+' || e.key==='='){ e.preventDefault(); stepZoom(1); }
+  else if (e.key==='-' || e.key==='_'){ e.preventDefault(); stepZoom(-1); }
+  else if (e.key==='0'){ e.preventDefault(); zoomToFit(); }
+  else if (e.key==='1'){ e.preventDefault(); zoomTo100(); }
+});
+
+window.addEventListener('resize', ()=>{ if (state.zoomFitMode) zoomToFit(); });
+
+/* ============================================================
+   UI <-> PARAM WIRING (generic)
+   ============================================================ */
+function formatSliderValue(el, val){
+  const path = el.dataset.param;
+  if (path.endsWith('gamma')) return (val/100).toFixed(2);
+  if (path==='statStretch.sigma') return (val/10).toFixed(1);
+  return String(Math.round(val));
+}
+function refreshValueLabel(path){
+  const el = document.querySelector(`[data-value-for="${path}"]`);
+  if (el) el.textContent = formatSliderValue({dataset:{param:path}}, getParam(path));
+}
+function wireParamControls(){
+  document.querySelectorAll('[data-param]').forEach(el=>{
+    const path = el.dataset.param;
+    if (el.type==='checkbox'){
+      el.addEventListener('change', ()=>{
+        setParam(path, el.checked);
+        scheduleRender();
+        commitHistory();
+      });
+    } else if (el.tagName==='SELECT'){
+      el.addEventListener('change', ()=>{
+        setParam(path, el.value);
+        scheduleRender();
+        commitHistory();
+      });
+    } else if (el.type==='range'){
+      el.addEventListener('input', ()=>{
+        setParam(path, parseFloat(el.value));
+        refreshValueLabel(path);
+        scheduleRender();
+      });
+      el.addEventListener('change', commitHistory);
+    }
+  });
+}
+function syncControlsFromParams(){
+  document.querySelectorAll('[data-param]').forEach(el=>{
+    const path = el.dataset.param;
+    const v = getParam(path);
+    if (el.type==='checkbox') el.checked = !!v;
+    else el.value = v;
+    if (el.type==='range') refreshValueLabel(path);
+  });
+}
+
+/* ---- Midtone control only affects the Midtone (MTF) stretch curve; reflect that in the UI
+   instead of leaving the slider fully interactive while doing nothing. ---- */
+const stretchTypeSelect = document.getElementById('stretchType');
+const midtoneSlider = document.querySelector('[data-param="stretch.mid"]');
+const midtoneField = document.getElementById('midtoneField');
+function updateMidtoneAvailability(){
+  const active = stretchTypeSelect.value === 'mtf';
+  midtoneSlider.disabled = !active;
+  midtoneField.classList.toggle('disabled', !active);
+  midtoneField.title = active ? '' : 'Midtone only has an effect when Curve is set to Midtone (MTF).';
+}
+stretchTypeSelect.addEventListener('change', updateMidtoneAvailability);
+updateMidtoneAvailability();
+
+/* ---- Temporary stretch (Background panel) — view-only, deliberately outside
+   the params/history system: toggling it re-renders the canvas but never calls
+   commitHistory(), so it can't be undone/redone and never touches exports. ---- */
+const tempStretchToggle = document.getElementById('tempStretchToggle');
+const tempStretchAmountSlider = document.getElementById('tempStretchAmountSlider');
+const tempStretchAmountVal = document.getElementById('tempStretchAmountVal');
+const tempStretchAmountField = document.getElementById('tempStretchAmountField');
+function updateTempStretchAvailability(){
+  const active = tempStretchToggle.checked;
+  tempStretchAmountSlider.disabled = !active;
+  tempStretchAmountField.classList.toggle('disabled', !active);
+}
+tempStretchToggle.addEventListener('change', ()=>{
+  state.tempStretchPreview = tempStretchToggle.checked;
+  updateTempStretchAvailability();
+  scheduleRender();
+});
+tempStretchAmountSlider.addEventListener('input', ()=>{
+  state.tempStretchAmount = parseFloat(tempStretchAmountSlider.value);
+  tempStretchAmountVal.textContent = tempStretchAmountSlider.value;
+  scheduleRender();
+});
+updateTempStretchAvailability();
+
+/* ---- Accordion panels ---- */
+document.querySelectorAll('.panel-header').forEach(h=>{
+  h.addEventListener('click', ()=>{
+    const panel = h.parentElement;
+    const opening = !panel.classList.contains('open');
+    panel.classList.toggle('open');
+    // Canvases inside a panel that starts collapsed (display:none) measure as
+    // 0×0 the first time they're sized, so they need a real resize+redraw once
+    // the panel actually becomes visible — otherwise they're stuck at 1×1.
+    if (opening && panel.dataset.panel==='curves'){
+      Object.keys(curveCanvases).forEach(ch=>{ resizeCurveCanvas(curveCanvases[ch]); drawCurveEditor(ch); });
+    }
+  });
+});
+
+/* ---- Tabs ---- */
+function initTabs(container){
+  container.querySelectorAll('[data-tab]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const group = btn.closest('[data-tabgroup]');
+      group.querySelectorAll('[data-tab]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const parent = group.parentElement;
+      parent.querySelectorAll('[data-tab-panel]').forEach(p=>{
+        p.classList.toggle('active', p.dataset.tabPanel===btn.dataset.tab);
+      });
+      if (group.dataset.tabgroup==='curves'){
+        resizeCurveCanvas(curveCanvases[btn.dataset.tab]);
+        drawCurveEditor(btn.dataset.tab);
+      }
+    });
+  });
+}
+document.querySelectorAll('[data-tabgroup]').forEach(g=>initTabs(g.parentElement));
+
+/* ---- Build Levels sliders per channel (identical markup x4) ---- */
+function buildLevelsPanel(channel){
+  const container = document.getElementById('levels-'+channel);
+  container.innerHTML = `
+    <div class="field">
+      <div class="field-row"><label>Black point</label><span class="val" data-value-for="levels.${channel}.black">0</span></div>
+      <input type="range" min="0" max="255" step="1" data-param="levels.${channel}.black">
+    </div>
+    <div class="field">
+      <div class="field-row"><label>White point</label><span class="val" data-value-for="levels.${channel}.white">255</span></div>
+      <input type="range" min="0" max="255" step="1" data-param="levels.${channel}.white">
+    </div>
+    <div class="field">
+      <div class="field-row"><label>Gamma</label><span class="val" data-value-for="levels.${channel}.gamma">1.00</span></div>
+      <input type="range" min="20" max="300" step="1" data-param="levels.${channel}.gamma">
+    </div>
+  `;
+}
+['RGB','R','G','B'].forEach(buildLevelsPanel);
+
+/* ============================================================
+   CURVE EDITOR
+   ============================================================ */
+const curveCanvases = {
+  L: document.getElementById('curveCanvasL'),
+  R: document.getElementById('curveCanvasR'),
+  G: document.getElementById('curveCanvasG'),
+  B: document.getElementById('curveCanvasB'),
+};
+const curveColors = { L:'#c7ccd6', R:'#e6635b', G:'#5bd66b', B:'#5b9ee6' };
+
+function resizeCurveCanvas(canvas){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1,Math.round(rect.width*dpr));
+  canvas.height = Math.max(1,Math.round(rect.height*dpr));
+}
+function drawCurveEditor(channel){
+  const canvas = curveCanvases[channel];
+  if (canvas.width===0 || canvas.height===0) resizeCurveCanvas(canvas);
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Background histogram: the data as it arrives at this curve (post Stretch/Levels,
+  // pre Curves) — gives the same "peak behind the curve" reference that dedicated
+  // curves tools (Photoshop, RawTherapee, PixInsight, etc.) show. Log-scaled since
+  // astro data is usually a tall, narrow background spike plus a long faint tail.
+  if (lastCurveHistData){
+    const counts = lastCurveHistData[channel];
+    const bins = lastCurveHistData.bins;
+    let max=1;
+    for(let i=0;i<bins;i++) max=Math.max(max,counts[i]);
+    const logMax = Math.log(max+1);
+    ctx.beginPath();
+    ctx.moveTo(0,H);
+    for(let i=0;i<bins;i++){
+      const x = (i/(bins-1))*W;
+      const v = Math.log(counts[i]+1)/logMax;
+      ctx.lineTo(x, H-v*H);
+    }
+    ctx.lineTo(W,H); ctx.closePath();
+    ctx.globalAlpha = 0.32;
+    ctx.fillStyle = curveColors[channel];
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.strokeStyle = '#1d2330'; ctx.lineWidth=1;
+  for(let i=1;i<4;i++){
+    const x = W*i/4, y = H*i/4;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+  ctx.strokeStyle = '#2a3141';
+  ctx.beginPath(); ctx.moveTo(0,H); ctx.lineTo(W,0); ctx.stroke();
+  const pts = state.curves[channel].slice().sort((a,b)=>a[0]-b[0]);
+  ctx.strokeStyle = curveColors[channel]; ctx.lineWidth=1.6;
+  ctx.beginPath();
+  for(let i=0;i<256;i++){
+    const t = i/255;
+    const x = t*W, y = H - clamp01(evalCurveAt(t, pts))*H;
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  pts.forEach(p=>{
+    const x=p[0]*W, y=H-p[1]*H;
+    ctx.beginPath(); ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle = '#0a0e14'; ctx.fill();
+    ctx.lineWidth=1.6; ctx.strokeStyle = curveColors[channel]; ctx.stroke();
+  });
+}
+function setupCurveEditor(channel){
+  const canvas = curveCanvases[channel];
+  let dragIndex = -1;
+  function toNorm(evt){
+    const rect = canvas.getBoundingClientRect();
+    const x = clamp01((evt.clientX-rect.left)/rect.width);
+    const y = clamp01(1-(evt.clientY-rect.top)/rect.height);
+    return [x,y];
+  }
+  function hitTest(nx,ny){
+    const pts = state.curves[channel];
+    let best=-1, bestD=0.045;
+    pts.forEach((p,i)=>{
+      const d = Math.hypot(p[0]-nx, p[1]-ny);
+      if (d<bestD){ bestD=d; best=i; }
+    });
+    return best;
+  }
+  canvas.addEventListener('pointerdown', (e)=>{
+    const [nx,ny] = toNorm(e);
+    const hit = hitTest(nx,ny);
+    if (hit>=0){ dragIndex = hit; }
+    else {
+      state.curves[channel].push([nx,ny]);
+      dragIndex = state.curves[channel].length-1;
+    }
+    canvas.setPointerCapture(e.pointerId);
+    drawCurveEditor(channel); scheduleRender();
+  });
+  canvas.addEventListener('pointermove', (e)=>{
+    if (dragIndex<0) return;
+    const [nx,ny] = toNorm(e);
+    const pts = state.curves[channel];
+    const isEndpoint = dragIndex===0 || dragIndex===pts.length-1;
+    pts[dragIndex] = [ isEndpoint ? pts[dragIndex][0] : nx, ny ];
+    drawCurveEditor(channel); scheduleRender();
+  });
+  function endDrag(){ if (dragIndex>=0){ dragIndex=-1; commitHistory(); } }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('dblclick', (e)=>{
+    const [nx,ny] = toNorm(e);
+    const pts = state.curves[channel];
+    const hit = hitTest(nx,ny);
+    if (hit>0 && hit<pts.length-1){
+      pts.splice(hit,1);
+      drawCurveEditor(channel); scheduleRender(); commitHistory();
+    }
+  });
+}
+Object.keys(curveCanvases).forEach(setupCurveEditor);
+document.getElementById('btnCurveReset').addEventListener('click', ()=>{
+  const active = document.querySelector('[data-tabgroup="curves"] .active').dataset.tab;
+  state.curves[active] = [[0,0],[1,1]];
+  drawCurveEditor(active); scheduleRender(); commitHistory();
+});
+window.addEventListener('resize', ()=>{
+  Object.keys(curveCanvases).forEach(ch=>{ resizeCurveCanvas(curveCanvases[ch]); drawCurveEditor(ch); });
+});
+
+/* ============================================================
+   HISTORY (undo/redo of edit params)
+   ============================================================ */
+const btnUndo = document.getElementById('btnUndo');
+const btnRedo = document.getElementById('btnRedo');
+const btnReset = document.getElementById('btnReset');
+
+function snapshot(){
+  return JSON.stringify({ params: state.params, curves: state.curves });
+}
+function commitHistory(){
+  const snap = snapshot();
+  if (state.history[state.historyIndex] === snap) return;
+  state.history = state.history.slice(0, state.historyIndex+1);
+  state.history.push(snap);
+  if (state.history.length>60) state.history.shift();
+  state.historyIndex = state.history.length-1;
+  updateHistoryButtons();
+}
+function restoreSnapshot(snap){
+  const obj = JSON.parse(snap);
+  state.params = obj.params;
+  state.curves = obj.curves;
+  syncControlsFromParams();
+  Object.keys(curveCanvases).forEach(ch=>drawCurveEditor(ch));
+  scheduleRender();
+}
+function updateHistoryButtons(){
+  btnUndo.disabled = state.historyIndex<=0;
+  btnRedo.disabled = state.historyIndex>=state.history.length-1;
+  btnReset.disabled = !state.baseFloat;
+}
+btnUndo.addEventListener('click', ()=>{
+  if (state.historyIndex<=0) return;
+  state.historyIndex--;
+  restoreSnapshot(state.history[state.historyIndex]);
+  updateHistoryButtons();
+});
+btnRedo.addEventListener('click', ()=>{
+  if (state.historyIndex>=state.history.length-1) return;
+  state.historyIndex++;
+  restoreSnapshot(state.history[state.historyIndex]);
+  updateHistoryButtons();
+});
+btnReset.addEventListener('click', ()=>{
+  state.params = defaultParams();
+  state.curves = defaultCurves();
+  syncControlsFromParams();
+  Object.keys(curveCanvases).forEach(ch=>drawCurveEditor(ch));
+  scheduleRender();
+  commitHistory();
+});
+
+/* ============================================================
+   IMAGE LOADING
+   ============================================================ */
+const fileInput = document.getElementById('fileInput');
+document.getElementById('btnLoad').addEventListener('click', ()=>fileInput.click());
+document.getElementById('btnLoadEmpty').addEventListener('click', ()=>fileInput.click());
+
+function loadImageFile(file){
+  return new Promise((resolve,reject)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>resolve({img,url,name:file.name});
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+function drawToWorkingRes(img, w, h){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  return ctx.getImageData(0,0,w,h);
+}
+
+/* ============================================================
+   FORMAT I/O — FITS & TIFF
+   Browsers can't natively decode/encode these, so we read and
+   write them by hand. Unlike PNG/JPEG (which the browser can only
+   ever hand us as 8-bit canvas pixels anyway), FITS and TIFF are
+   decoded straight into full-precision Float32 channels and never
+   touch an 8-bit canvas internally, so their real bit depth is
+   preserved all the way through editing and back out on export.
+   ============================================================ */
+const MAX_RAW_SAMPLES = 60_000_000; // safety cap so a huge file can't hang/crash the tab
+
+function getFileExt(name){
+  const m = /\.([a-z0-9]+)$/i.exec(name||'');
+  return m ? m[1].toLowerCase() : '';
+}
+function imageDataToFloatImage(imgData){
+  const w = imgData.width, h = imgData.height, n = w*h;
+  const src = imgData.data;
+  const R = new Float32Array(n), G = new Float32Array(n), B = new Float32Array(n);
+  for(let i=0;i<n;i++){ R[i]=src[i*4]/255; G[i]=src[i*4+1]/255; B[i]=src[i*4+2]/255; }
+  return { width:w, height:h, R, G, B };
+}
+/* Bilinear resize done directly on the float channels (no canvas round-trip),
+   used for FITS/TIFF so downscaling to the working resolution never quantizes
+   through 8-bit. */
+function resizeFloatImage(img, newW, newH){
+  const { width:w, height:h, R, G, B } = img;
+  if (w===newW && h===newH) return img;
+  const outR = new Float32Array(newW*newH), outG = new Float32Array(newW*newH), outB = new Float32Array(newW*newH);
+  const xRatio = w/newW, yRatio = h/newH;
+  for(let y=0;y<newH;y++){
+    const sy = (y+0.5)*yRatio - 0.5;
+    const y0 = Math.max(0, Math.floor(sy)), y1 = Math.min(h-1, y0+1);
+    const fy = sy-y0;
+    for(let x=0;x<newW;x++){
+      const sx = (x+0.5)*xRatio - 0.5;
+      const x0 = Math.max(0, Math.floor(sx)), x1 = Math.min(w-1, x0+1);
+      const fx = sx-x0;
+      const i00=y0*w+x0, i10=y0*w+x1, i01=y1*w+x0, i11=y1*w+x1;
+      const di = y*newW+x;
+      function blerp(arr){
+        const top = arr[i00]*(1-fx)+arr[i10]*fx;
+        const bot = arr[i01]*(1-fx)+arr[i11]*fx;
+        return top*(1-fy)+bot*fy;
+      }
+      outR[di]=blerp(R); outG[di]=blerp(G); outB[di]=blerp(B);
+    }
+  }
+  return { width:newW, height:newH, R:outR, G:outG, B:outB };
+}
+function downloadBlob(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/* ---- Auto-stretch for high-bit-depth / linear data (16-/32-bit FITS & TIFF are
+   usually raw linear sensor counts, not display-ready) — a percentile-clipped
+   min/max mapped to 0-255, similar to the "auto stretch" most FITS viewers apply
+   on load. 8-bit sources are assumed already display-ready and left untouched. ---- */
+function computeAutoStretchRange(data, loPct, hiPct){
+  loPct = loPct===undefined ? 0.001 : loPct;
+  hiPct = hiPct===undefined ? 0.001 : hiPct;
+  let min=Infinity, max=-Infinity;
+  for(let i=0;i<data.length;i++){ const v=data[i]; if(v<min)min=v; if(v>max)max=v; }
+  if (!isFinite(min) || !isFinite(max)) return {lo:0,hi:1};
+  if (max<=min) return {lo:min, hi:min+1};
+  const bins = 65536;
+  const hist = new Float64Array(bins);
+  const scale = (bins-1)/(max-min);
+  for(let i=0;i<data.length;i++){
+    let b = Math.round((data[i]-min)*scale);
+    if (b<0) b=0; else if (b>bins-1) b=bins-1;
+    hist[b]++;
+  }
+  const total = data.length;
+  const loTarget = total*loPct, hiTarget = total*hiPct;
+  let cum=0, loBin=0;
+  for(let i=0;i<bins;i++){ cum+=hist[i]; if (cum>=loTarget){ loBin=i; break; } }
+  cum=0; let hiBin=bins-1;
+  for(let i=bins-1;i>=0;i--){ cum+=hist[i]; if (cum>=hiTarget){ hiBin=i; break; } }
+  if (hiBin<=loBin) hiBin = Math.min(bins-1, loBin+1);
+  return { lo: min+loBin/scale, hi: min+hiBin/scale };
+}
+function mapToUnit(v, range){
+  const t = (v-range.lo)/(range.hi-range.lo);
+  return t<0?0:(t>1?1:t);
+}
+
+/* -------------------- FITS -------------------- */
+function parseFitsFile(buffer){
+  const BLOCK=2880, CARD=80;
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length<BLOCK) throw new Error('File is too small to be a valid FITS file.');
+  let offset = 0;
+  const header = {};
+  let done = false;
+  while(!done){
+    if (offset+BLOCK>bytes.length) throw new Error('Unexpected end of file while reading the FITS header.');
+    let blockStr = '';
+    for(let i=0;i<BLOCK;i++) blockStr += String.fromCharCode(bytes[offset+i]);
+    offset += BLOCK;
+    for(let c=0;c<BLOCK;c+=CARD){
+      const card = blockStr.substr(c,CARD);
+      const kw = card.substr(0,8).trim();
+      if (!kw) continue;
+      if (kw==='END'){ done=true; break; }
+      if (kw==='COMMENT' || kw==='HISTORY') continue;
+      if (card.charAt(8)==='='){
+        const rest = card.substring(10);
+        const t = rest.replace(/^\s+/,'');
+        let value;
+        if (t.charAt(0)==="'"){
+          const end = t.indexOf("'",1);
+          value = (end>=0 ? t.substring(1,end) : t.substring(1)).replace(/''/g,"'").replace(/\s+$/,'');
+        } else {
+          const slash = t.indexOf('/');
+          const raw = (slash>=0 ? t.substring(0,slash) : t).trim();
+          if (raw==='T') value=true;
+          else if (raw==='F') value=false;
+          else { const n=parseFloat(raw); value = isNaN(n) ? raw : n; }
+        }
+        header[kw]=value;
+      }
+    }
+  }
+
+  const bitpix = header.BITPIX;
+  const naxis = header.NAXIS||0;
+  const naxis1 = header.NAXIS1||0;
+  const naxis2 = naxis>=2 ? (header.NAXIS2||0) : 1;
+  const naxis3 = naxis>=3 ? (header.NAXIS3||1) : 1;
+  const bzero = header.BZERO!==undefined ? header.BZERO : 0;
+  const bscale = header.BSCALE!==undefined ? header.BSCALE : 1;
+
+  if (![8,16,32,-32,-64].includes(bitpix)) throw new Error('Unsupported FITS BITPIX value: '+bitpix+'.');
+  if (!naxis1 || !naxis2) throw new Error("This FITS file has no image data in its primary HDU (it may live in an extension), which isn't supported.");
+
+  const w=naxis1, h=naxis2, planes=naxis3;
+  const count = w*h*planes;
+  if (count>MAX_RAW_SAMPLES) throw new Error('This FITS image is too large to process in the browser. Please downsample it first.');
+
+  const bytesPerSample = Math.abs(bitpix)/8;
+  const dataBytes = count*bytesPerSample;
+  if (offset+dataBytes>bytes.length) throw new Error('FITS pixel data is truncated or corrupt.');
+
+  const dv = new DataView(buffer, offset, dataBytes);
+  const values = new Float32Array(count);
+  for(let i=0;i<count;i++){
+    let raw;
+    switch(bitpix){
+      case 8: raw=dv.getUint8(i); break;
+      case 16: raw=dv.getInt16(i*2,false); break;
+      case 32: raw=dv.getInt32(i*4,false); break;
+      case -32: raw=dv.getFloat32(i*4,false); break;
+      case -64: raw=dv.getFloat64(i*8,false); break;
+    }
+    values[i] = raw*bscale + bzero;
+  }
+  return { width:w, height:h, planes, bitpix, values, roworder: header.ROWORDER };
+}
+function fitsToFloatImage(fits){
+  const { width:w, height:h, planes, values, bitpix, roworder } = fits;
+  const isColor = planes>=3;
+  const needsStretch = bitpix!==8;
+  const flip = String(roworder||'').toUpperCase()!=='TOP-DOWN'; // FITS default is bottom-up unless a writer says otherwise
+  const range = needsStretch ? computeAutoStretchRange(values) : null;
+  const n = w*h;
+  const R = new Float32Array(n), G = new Float32Array(n), B = new Float32Array(n);
+  const planeSize = n;
+  for(let y=0;y<h;y++){
+    const srcRow = flip ? h-1-y : y;
+    for(let x=0;x<w;x++){
+      const si = srcRow*w+x, di=y*w+x;
+      if (isColor){
+        R[di] = needsStretch ? mapToUnit(values[si], range) : values[si]/255;
+        G[di] = needsStretch ? mapToUnit(values[planeSize+si], range) : values[planeSize+si]/255;
+        B[di] = needsStretch ? mapToUnit(values[planeSize*2+si], range) : values[planeSize*2+si]/255;
+      } else {
+        const v = needsStretch ? mapToUnit(values[si], range) : values[si]/255;
+        R[di]=v; G[di]=v; B[di]=v;
+      }
+    }
+  }
+  return { width:w, height:h, R, G, B };
+}
+function fitsCard(keyword, value, comment){
+  if (keyword==='COMMENT' || keyword==='HISTORY'){
+    return (keyword.padEnd(8,' ')+' '+(value||'')).substring(0,80).padEnd(80,' ');
+  }
+  let valStr;
+  if (typeof value==='boolean') valStr = value ? 'T' : 'F';
+  else if (typeof value==='number') valStr = Number.isInteger(value) ? String(value) : String(value);
+  else valStr = "'"+String(value).replace(/'/g,"''").padEnd(8,' ')+"'";
+  valStr = valStr.length<20 ? valStr.padStart(20,' ') : valStr;
+  let card = keyword.padEnd(8,' ')+'= '+valStr;
+  if (comment) card += ' / '+comment;
+  return card.substring(0,80).padEnd(80,' ');
+}
+function writeFits(floatImg, bitDepth){
+  const { width, height, R, G, B } = floatImg;
+  const is32 = bitDepth===32;
+  const bitpix = is32 ? -32 : 16;
+  const bzero = is32 ? 0 : 32768;
+  const bytesPerSample = is32 ? 4 : 2;
+
+  const cards = [
+    fitsCard('SIMPLE', true, 'conforms to FITS standard'),
+    fitsCard('BITPIX', bitpix, is32 ? '32-bit IEEE float data' : '16-bit integer data'),
+    fitsCard('NAXIS', 3, 'number of data axes'),
+    fitsCard('NAXIS1', width, 'image width'),
+    fitsCard('NAXIS2', height, 'image height'),
+    fitsCard('NAXIS3', 3, 'RGB color planes'),
+    fitsCard('EXTEND', true, ''),
+    fitsCard('BSCALE', 1, ''),
+    fitsCard('BZERO', bzero, is32 ? '' : 'offset for unsigned 16-bit range'),
+    fitsCard('ORIGIN', 'BesselsStar Imaging Editor', ''),
+    fitsCard('COMMENT', 'Exported from BesselsStar Imaging Editor (browser tool)'),
+  ];
+  let headerStr = cards.join('') + 'END'.padEnd(80,' ');
+  const rem = headerStr.length % 2880;
+  if (rem!==0) headerStr += ' '.repeat(2880-rem);
+  const headerBytes = new Uint8Array(headerStr.length);
+  for(let i=0;i<headerStr.length;i++) headerBytes[i]=headerStr.charCodeAt(i);
+
+  const planeSize = width*height;
+  const dataBytes = new Uint8Array(planeSize*3*bytesPerSample);
+  const dv = new DataView(dataBytes.buffer);
+  function writeSample(sampleIndex, value01){
+    const byteOffset = sampleIndex*bytesPerSample;
+    if (is32){
+      dv.setFloat32(byteOffset, value01, false); // FITS uses big-endian ("network" byte order)
+    } else {
+      const unsigned16 = Math.round(clampRange(value01,0,1)*65535);
+      dv.setInt16(byteOffset, clampRange(unsigned16-32768,-32768,32767), false);
+    }
+  }
+  for(let fy=0; fy<height; fy++){
+    const srcRow = height-1-fy; // write bottom-up per FITS convention
+    for(let x=0;x<width;x++){
+      const si = srcRow*width+x, fi = fy*width+x;
+      writeSample(fi, R[si]);
+      writeSample(planeSize+fi, G[si]);
+      writeSample(planeSize*2+fi, B[si]);
+    }
+  }
+  const pad = dataBytes.length%2880===0 ? 0 : 2880-(dataBytes.length%2880);
+  const total = new Uint8Array(headerBytes.length+dataBytes.length+pad);
+  total.set(headerBytes,0);
+  total.set(dataBytes,headerBytes.length);
+  return total.buffer;
+}
+
+/* -------------------- TIFF -------------------- */
+function parseTiffFile(buffer){
+  if (buffer.byteLength<8) throw new Error('File is too small to be a valid TIFF file.');
+  const view = new DataView(buffer);
+  const b0=view.getUint8(0), b1=view.getUint8(1);
+  let little;
+  if (b0===0x49 && b1===0x49) little=true;
+  else if (b0===0x4D && b1===0x4D) little=false;
+  else throw new Error('Not a valid TIFF file (bad byte-order marker).');
+  if (view.getUint16(2,little)!==42) throw new Error('Not a valid TIFF file (bad magic number).');
+
+  const typeSizes = {1:1,2:1,3:2,4:4,5:8,6:1,7:1,8:2,9:4,10:8,11:4,12:8};
+  const ifdOffset = view.getUint32(4,little);
+  const entryCount = view.getUint16(ifdOffset,little);
+  const tags = {};
+  for(let i=0;i<entryCount;i++){
+    const eo = ifdOffset+2+i*12;
+    const tag = view.getUint16(eo,little);
+    const type = view.getUint16(eo+2,little);
+    const count = view.getUint32(eo+4,little);
+    const tsize = typeSizes[type]||1;
+    const size = tsize*count;
+    let dataOffset = size>4 ? view.getUint32(eo+8,little) : eo+8;
+    const values = [];
+    for(let k=0;k<count;k++){
+      const off = dataOffset+k*tsize;
+      if (off+tsize>buffer.byteLength){ values.push(0); continue; }
+      let v;
+      switch(type){
+        case 1: case 2: case 6: case 7: v=view.getUint8(off); break;
+        case 3: v=view.getUint16(off,little); break;
+        case 8: v=view.getInt16(off,little); break;
+        case 4: v=view.getUint32(off,little); break;
+        case 9: v=view.getInt32(off,little); break;
+        case 11: v=view.getFloat32(off,little); break;
+        case 12: v=view.getFloat64(off,little); break;
+        case 5: { const n=view.getUint32(off,little), d=view.getUint32(off+4,little); v=d?n/d:0; break; }
+        case 10: { const n=view.getInt32(off,little), d=view.getInt32(off+4,little); v=d?n/d:0; break; }
+        default: v=0;
+      }
+      values.push(v);
+    }
+    tags[tag]=values;
+  }
+
+  const width = (tags[256]||[])[0];
+  const height = (tags[257]||[])[0];
+  const bitsPerSample = (tags[258]||[8])[0];
+  const compression = (tags[259]||[1])[0];
+  const photometric = (tags[262]||[1])[0];
+  const samplesPerPixel = (tags[277]||[1])[0];
+  const planarConfig = (tags[284]||[1])[0];
+  const sampleFormat = (tags[339]||[1])[0];
+  const stripOffsets = tags[273];
+  const stripByteCounts = tags[279];
+
+  if (!width || !height) throw new Error('TIFF file is missing image dimensions.');
+  if (compression!==1) throw new Error("Compressed TIFF files aren't supported yet — please re-save as an uncompressed TIFF.");
+  if (planarConfig!==1) throw new Error("Planar (non-interleaved) TIFF files aren't supported yet — please re-save as chunky/interleaved.");
+  if (!stripOffsets || !stripByteCounts) throw new Error("Unsupported TIFF layout (tiled TIFFs aren't supported).");
+  if (![8,16,32].includes(bitsPerSample)) throw new Error('Unsupported TIFF bit depth: '+bitsPerSample+'-bit.');
+
+  const total = width*height*samplesPerPixel;
+  if (total>MAX_RAW_SAMPLES) throw new Error('This TIFF image is too large to process in the browser. Please downsample it first.');
+
+  const bytesPerSample = bitsPerSample/8;
+  const samples = new Float32Array(total);
+  let idx = 0;
+  for(let s=0;s<stripOffsets.length && idx<total;s++){
+    const off = stripOffsets[s];
+    const byteCount = stripByteCounts[s]||0;
+    const n = Math.min(Math.floor(byteCount/bytesPerSample), total-idx);
+    for(let i=0;i<n;i++){
+      const bo = off+i*bytesPerSample;
+      let v;
+      if (bitsPerSample===8) v=view.getUint8(bo);
+      else if (bitsPerSample===16) v=view.getUint16(bo,little);
+      else v = (sampleFormat===3) ? view.getFloat32(bo,little) : view.getUint32(bo,little);
+      samples[idx++]=v;
+    }
+  }
+  return { width, height, samplesPerPixel, photometric, bitsPerSample, samples };
+}
+function tiffToFloatImage(t){
+  const { width:w, height:h, samplesPerPixel, photometric, bitsPerSample, samples } = t;
+  const needsStretch = bitsPerSample!==8;
+  const range = needsStretch ? computeAutoStretchRange(samples) : null;
+  const invert = photometric===0;
+  const n = w*h;
+  const R = new Float32Array(n), G = new Float32Array(n), B = new Float32Array(n);
+  for(let p=0;p<n;p++){
+    const base=p*samplesPerPixel;
+    if (samplesPerPixel>=3){
+      R[p] = needsStretch ? mapToUnit(samples[base],range)   : samples[base]/255;
+      G[p] = needsStretch ? mapToUnit(samples[base+1],range) : samples[base+1]/255;
+      B[p] = needsStretch ? mapToUnit(samples[base+2],range) : samples[base+2]/255;
+    } else {
+      let v = needsStretch ? mapToUnit(samples[base],range) : samples[base]/255;
+      if (invert) v = 1-v;
+      R[p]=v; G[p]=v; B[p]=v;
+    }
+  }
+  return { width:w, height:h, R, G, B };
+}
+function writeTiff(floatImg, bitsPerSample){
+  bitsPerSample = bitsPerSample===16 ? 16 : 8;
+  const { width:w, height:h, R, G, B } = floatImg;
+  const bytesPerSample = bitsPerSample/8;
+  const rowBytes = w*3*bytesPerSample;
+  const pixelBytes = rowBytes*h;
+  let ptr = 8+pixelBytes;
+  if (ptr%2!==0) ptr++;
+  const ifdOffset = ptr;
+  const entries = 12;
+  const ifdSize = 2+entries*12+4;
+  let extPtr = ifdOffset+ifdSize;
+  if (extPtr%2!==0) extPtr++;
+  const bpsOffset = extPtr;
+  const xResOffset = bpsOffset+6;
+  const yResOffset = xResOffset+8;
+  const totalSize = yResOffset+8;
+
+  const buf = new ArrayBuffer(totalSize);
+  const view = new DataView(buf);
+  const bytes = new Uint8Array(buf);
+  const little = true;
+
+  bytes[0]=0x49; bytes[1]=0x49;
+  view.setUint16(2,42,little);
+  view.setUint32(4,ifdOffset,little);
+
+  const n = w*h;
+  const maxVal = bitsPerSample===16 ? 65535 : 255;
+  if (bitsPerSample===16){
+    for(let p=0;p<n;p++){
+      const o = 8+p*6;
+      view.setUint16(o,   clampRange(Math.round(R[p]*maxVal),0,maxVal), little);
+      view.setUint16(o+2, clampRange(Math.round(G[p]*maxVal),0,maxVal), little);
+      view.setUint16(o+4, clampRange(Math.round(B[p]*maxVal),0,maxVal), little);
+    }
+  } else {
+    for(let p=0;p<n;p++){
+      const o = 8+p*3;
+      bytes[o]   = clampRange(Math.round(R[p]*maxVal),0,maxVal);
+      bytes[o+1] = clampRange(Math.round(G[p]*maxVal),0,maxVal);
+      bytes[o+2] = clampRange(Math.round(B[p]*maxVal),0,maxVal);
+    }
+  }
+
+  let eo = ifdOffset;
+  view.setUint16(eo, entries, little); eo+=2;
+  function entry(tag,type,count,val,isOffset){
+    view.setUint16(eo,tag,little);
+    view.setUint16(eo+2,type,little);
+    view.setUint32(eo+4,count,little);
+    if (isOffset) view.setUint32(eo+8,val,little);
+    else if (type===3) view.setUint16(eo+8,val,little);
+    else view.setUint32(eo+8,val,little);
+    eo+=12;
+  }
+  entry(256,4,1,w,false);            // ImageWidth
+  entry(257,4,1,h,false);            // ImageLength
+  entry(258,3,3,bpsOffset,true);     // BitsPerSample (per-channel)
+  entry(259,3,1,1,false);            // Compression: none
+  entry(262,3,1,2,false);            // PhotometricInterpretation: RGB
+  entry(273,4,1,8,false);            // StripOffsets
+  entry(277,3,1,3,false);            // SamplesPerPixel
+  entry(278,4,1,h,false);            // RowsPerStrip
+  entry(279,4,1,pixelBytes,false);   // StripByteCounts
+  entry(282,5,1,xResOffset,true);    // XResolution
+  entry(283,5,1,yResOffset,true);    // YResolution
+  entry(296,3,1,2,false);            // ResolutionUnit: inch
+  view.setUint32(eo,0,little);       // next IFD offset: none
+
+  view.setUint16(bpsOffset,bitsPerSample,little);
+  view.setUint16(bpsOffset+2,bitsPerSample,little);
+  view.setUint16(bpsOffset+4,bitsPerSample,little);
+  view.setUint32(xResOffset,72,little); view.setUint32(xResOffset+4,1,little);
+  view.setUint32(yResOffset,72,little); view.setUint32(yResOffset+4,1,little);
+
+  return buf;
+}
+
+/* -------------------- Unified loader -------------------- */
+async function loadAnyImageFile(file){
+  const ext = getFileExt(file.name);
+  if (ext==='fits'||ext==='fit'||ext==='fts'){
+    const buf = await file.arrayBuffer();
+    const fits = parseFitsFile(buf);
+    const floatImage = fitsToFloatImage(fits);
+    return {
+      kind:'float', floatImage,
+      sourceLabel: `FITS · ${Math.abs(fits.bitpix)}-bit`+(fits.bitpix!==8?' (auto-stretched)':'')
+    };
+  }
+  if (ext==='tif'||ext==='tiff'){
+    const buf = await file.arrayBuffer();
+    const tiffMeta = parseTiffFile(buf);
+    const floatImage = tiffToFloatImage(tiffMeta);
+    return {
+      kind:'float', floatImage,
+      sourceLabel: `TIFF · ${tiffMeta.bitsPerSample}-bit`+(tiffMeta.bitsPerSample!==8?' (auto-stretched)':'')
+    };
+  }
+  const loaded = await loadImageFile(file);
+  return {
+    kind:'raster', source: loaded.img, width: loaded.img.naturalWidth, height: loaded.img.naturalHeight,
+    sourceLabel: (ext ? ext.toUpperCase() : 'IMAGE') + ' · 8-bit'
+  };
+}
+
+fileInput.addEventListener('change', async (e)=>{
+  const file = (e.target.files||[])[0];
+  if (!file) return;
+  let loaded;
+  try { loaded = await loadAnyImageFile(file); }
+  catch(err){
+    console.error('Failed to load', file.name, err);
+    alert('Could not load "'+file.name+'":\n'+(err && err.message ? err.message : err));
+    fileInput.value = '';
+    return;
+  }
+
+  const nativeW = loaded.kind==='float' ? loaded.floatImage.width : loaded.width;
+  const nativeH = loaded.kind==='float' ? loaded.floatImage.height : loaded.height;
+  const scale = Math.min(1, MAX_DIM/Math.max(nativeW, nativeH));
+  state.width = Math.round(nativeW*scale);
+  state.height = Math.round(nativeH*scale);
+  state.imageName = file.name;
+
+  if (loaded.kind==='float'){
+    // FITS/TIFF: resize (if needed) directly on the float channels — never touches an 8-bit canvas
+    state.baseFloat = resizeFloatImage(loaded.floatImage, state.width, state.height);
+  } else {
+    // PNG/JPEG/etc: the browser can only ever decode these at 8-bit anyway, so a canvas resize costs nothing extra
+    const imgData = drawToWorkingRes(loaded.source, state.width, state.height);
+    state.baseFloat = imageDataToFloatImage(imgData);
+  }
+
+  document.getElementById('imageName').textContent = state.imageName;
+  document.getElementById('imageDims').textContent = `${state.width} × ${state.height}`;
+  document.getElementById('imageSource').textContent = loaded.sourceLabel;
+
+  document.getElementById('btnExport').disabled = false;
+  exportFormatSelect.disabled = false;
+  btnReset.disabled = false;
+  fileInput.value = '';
+  state.zoomFitMode = true;
+  zoomToFit();
+  scheduleRender();
+  commitHistory();
+});
+
+/* ============================================================
+   EXPORT
+   ============================================================ */
+const exportFormatSelect = document.getElementById('exportFormat');
+const exportBitDepthSelect = document.getElementById('exportBitDepth');
+function updateExportBitDepthOptions(){
+  const fmt = exportFormatSelect.value;
+  if (fmt==='png'){
+    exportBitDepthSelect.style.display = 'none';
+    exportBitDepthSelect.innerHTML = '';
+  } else if (fmt==='tiff'){
+    exportBitDepthSelect.style.display = '';
+    exportBitDepthSelect.innerHTML = '<option value="8">8-bit</option><option value="16" selected>16-bit</option>';
+  } else if (fmt==='fits'){
+    exportBitDepthSelect.style.display = '';
+    exportBitDepthSelect.innerHTML = '<option value="16">16-bit int</option><option value="32" selected>32-bit float</option>';
+  }
+}
+exportFormatSelect.addEventListener('change', updateExportBitDepthOptions);
+updateExportBitDepthOptions();
+
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  if (!lastRenderedFloat) return;
+  const fmt = exportFormatSelect.value;
+  const bitDepth = parseInt(exportBitDepthSelect.value, 10);
+  const base = `astro-edit-${Date.now()}`;
+  if (fmt==='png'){
+    // Built fresh from the real (untouched) pipeline result — never from mainCanvas directly,
+    // so a "Temporary stretch" preview left on can never leak into the exported file.
+    const png8 = floatToImageData8bit(lastRenderedFloat);
+    const c = document.createElement('canvas');
+    c.width = png8.width; c.height = png8.height;
+    c.getContext('2d').putImageData(png8,0,0);
+    c.toBlob((blob)=>downloadBlob(blob, base+'.png'), 'image/png');
+  } else if (fmt==='tiff'){
+    try{
+      const buf = writeTiff(lastRenderedFloat, bitDepth);
+      downloadBlob(new Blob([buf], {type:'image/tiff'}), base+'.tiff');
+    } catch(err){ console.error(err); alert('Failed to export TIFF: '+err.message); }
+  } else if (fmt==='fits'){
+    try{
+      const buf = writeFits(lastRenderedFloat, bitDepth);
+      downloadBlob(new Blob([buf], {type:'application/fits'}), base+'.fits');
+    } catch(err){ console.error(err); alert('Failed to export FITS: '+err.message); }
+  }
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+state.params = defaultParams();
+state.curves = defaultCurves();
+wireParamControls();
+syncControlsFromParams();
+Object.keys(curveCanvases).forEach(ch=>{ resizeCurveCanvas(curveCanvases[ch]); drawCurveEditor(ch); });
+renderHistogram();
+updateHistoryButtons();
+commitHistory();
+render();
+
+})();
+</script>
+
+<dialog class="about" id="aboutDialog" aria-labelledby="aboutTitle">
+  <div class="about-body">
+    <h2 id="aboutTitle">Bessel'sStar Imaging Editor</h2>
+    <p class="mono">Copyright &copy; 2026 Adam Bessell</p>
+    <p>A free, open-source astro-imaging editor that runs entirely in your browser. Your images are processed on your device and are never uploaded.</p>
+    <p>Released under the <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT License</a>. You are free to use, copy, modify, and share it, provided the copyright and license notice are kept. The software is provided &ldquo;as is&rdquo;, without warranty of any kind.</p>
+  </div>
+  <div class="about-actions">
+    <button type="button" id="aboutClose" class="primary">Close</button>
+  </div>
+</dialog>
+<script>
+(function(){
+  const dlg = document.getElementById('aboutDialog');
+  const open = ()=>{ if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open',''); };
+  document.getElementById('btnAbout').addEventListener('click', open);
+  document.getElementById('aboutClose').addEventListener('click', ()=> dlg.close());
+  dlg.addEventListener('click', (e)=>{ if(e.target === dlg) dlg.close(); });
+})();
+</script>
+</body>
+</html>
