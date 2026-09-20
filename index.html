@@ -200,6 +200,56 @@
   .btn-row{display:flex; gap:6px; margin-top:12px;}
   .btn-row button{flex:1; font-size:11px; padding:6px 4px;}
 
+  /* ---------- Crop & rotate ---------- */
+  .btn-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  .btn-grid button{font-size:11px; padding:6px 4px;}
+  .subhead{
+    margin-top:16px; padding-top:14px; border-top:1px solid var(--border-soft);
+    font-size:11px; font-weight:600; color:var(--text-secondary);
+  }
+  .crop-readout{
+    font-family:var(--mono); font-size:11px; color:var(--accent-teal);
+    margin-top:12px; text-align:center;
+  }
+  /* The stage wraps the canvas so the crop overlay can sit exactly on top of it at any zoom level. */
+  .canvas-stage{position:relative; flex:none;}
+  .crop-overlay{
+    position:absolute; inset:0; display:none; z-index:2;
+    cursor:crosshair; touch-action:none; user-select:none; -webkit-user-select:none;
+  }
+  .crop-overlay.active{display:block;}
+  .crop-box{
+    position:absolute; cursor:move; touch-action:none;
+    outline:1px solid var(--accent-teal);
+    box-shadow:0 0 0 9999px rgba(6,8,16,.62); /* dims everything outside the box */
+    /* rule-of-thirds guides */
+    background-image:
+      linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),
+      linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),
+      linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),
+      linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28));
+    background-size:1px 100%, 1px 100%, 100% 1px, 100% 1px;
+    background-position:33.333% 0, 66.667% 0, 0 33.333%, 0 66.667%;
+    background-repeat:no-repeat;
+  }
+  .crop-dim{
+    position:absolute; left:4px; top:4px; padding:1px 6px; border-radius:2px;
+    font:500 10.5px var(--mono); color:var(--text-primary); background:rgba(6,8,16,.75);
+    pointer-events:none; white-space:nowrap;
+  }
+  .crop-handle{
+    position:absolute; width:12px; height:12px; margin:-6px 0 0 -6px;
+    background:var(--accent-teal); border:2px solid #0a0e14; border-radius:2px; touch-action:none;
+  }
+  .crop-handle[data-h="nw"]{left:0;    top:0;    cursor:nwse-resize;}
+  .crop-handle[data-h="n"] {left:50%;  top:0;    cursor:ns-resize;}
+  .crop-handle[data-h="ne"]{left:100%; top:0;    cursor:nesw-resize;}
+  .crop-handle[data-h="e"] {left:100%; top:50%;  cursor:ew-resize;}
+  .crop-handle[data-h="se"]{left:100%; top:100%; cursor:nwse-resize;}
+  .crop-handle[data-h="s"] {left:50%;  top:100%; cursor:ns-resize;}
+  .crop-handle[data-h="sw"]{left:0;    top:100%; cursor:nesw-resize;}
+  .crop-handle[data-h="w"] {left:0;    top:50%;  cursor:ew-resize;}
+
   /* ---------- Inspector ---------- */
   .inspector .panel-body-static{padding:12px 14px 16px;}
   .hist-header{display:flex; align-items:center; justify-content:space-between;}
@@ -323,6 +373,52 @@
 
     <!-- ===================== TOOL RAIL ===================== -->
     <aside class="tool-rail" id="toolRail">
+
+      <!-- CROP & ROTATE (applied first in the pipeline, before every tonal step) -->
+      <section class="panel" data-panel="geometry">
+        <div class="panel-header"><h2>Crop &amp; rotate</h2><span class="chev">▸</span></div>
+        <div class="panel-body">
+          <div class="btn-grid">
+            <button type="button" id="btnRotL" disabled title="Rotate 90° counter-clockwise">Rotate left</button>
+            <button type="button" id="btnRotR" disabled title="Rotate 90° clockwise">Rotate right</button>
+            <button type="button" id="btnFlipH" disabled title="Mirror left ↔ right">Flip horizontal</button>
+            <button type="button" id="btnFlipV" disabled title="Mirror top ↔ bottom">Flip vertical</button>
+          </div>
+          <div class="field" id="geomAngleField">
+            <div class="field-row"><label>Straighten</label><span class="val" data-value-for="geom.angle">0.0°</span></div>
+            <input type="range" min="-45" max="45" step="0.1" data-param="geom.angle" id="geomAngle" disabled title="Double-click to reset to 0°">
+          </div>
+          <div class="hint">Positive angles turn the image clockwise (arrow keys nudge 0.1°; double-click the slider to reset). Small rotations leave black corners — crop them off.</div>
+
+          <div class="subhead">Crop</div>
+          <div id="cropIdle">
+            <div class="btn-row">
+              <button type="button" id="btnCropStart" disabled>Crop…</button>
+              <button type="button" id="btnCropClear" disabled>Clear crop</button>
+            </div>
+            <div class="hint">Rotation and crop are applied before Background, Stretch and everything else, so those steps only see the area you keep.</div>
+          </div>
+          <div id="cropActive" hidden>
+            <div class="field">
+              <div class="field-row"><label>Aspect ratio</label></div>
+              <select id="cropAspect">
+                <option value="free" selected>Free</option>
+                <option value="orig">Original</option>
+                <option value="1:1">1 : 1</option>
+                <option value="4:3">4 : 3</option>
+                <option value="3:2">3 : 2</option>
+                <option value="16:9">16 : 9</option>
+              </select>
+            </div>
+            <div class="crop-readout" id="cropReadout">—</div>
+            <div class="btn-row">
+              <button type="button" id="btnCropApply" class="primary">Apply crop</button>
+              <button type="button" id="btnCropCancel">Cancel</button>
+            </div>
+            <div class="hint">Drag the box to move it, drag its handles to resize, or drag outside the box to start a new one. Enter applies, Esc cancels.</div>
+          </div>
+        </div>
+      </section>
 
       <!-- BACKGROUND -->
       <section class="panel" data-panel="background">
@@ -555,7 +651,17 @@
     <!-- ===================== VIEWPORT ===================== -->
     <main class="viewport" id="viewport">
       <div class="canvas-wrap">
-        <canvas id="mainCanvas" width="800" height="600"></canvas>
+        <div class="canvas-stage" id="canvasStage">
+          <canvas id="mainCanvas" width="800" height="600"></canvas>
+          <div class="crop-overlay" id="cropOverlay">
+            <div class="crop-box" id="cropBox">
+              <span class="crop-dim" id="cropDim"></span>
+              <i class="crop-handle" data-h="nw"></i><i class="crop-handle" data-h="n"></i><i class="crop-handle" data-h="ne"></i>
+              <i class="crop-handle" data-h="e"></i><i class="crop-handle" data-h="se"></i><i class="crop-handle" data-h="s"></i>
+              <i class="crop-handle" data-h="sw"></i><i class="crop-handle" data-h="w"></i>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="empty-state" id="emptyState">
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
@@ -669,8 +775,15 @@ const state = {
   tempStretchAmount: 30,     // 0-100, also view-only
 };
 
+function defaultGeom(){
+  // quarter: clockwise 90° turns (0-3), applied after `mirror` (a left/right flip).
+  // angle: fine "straighten" rotation in degrees (positive = clockwise), applied after quarter/mirror.
+  // crop: {x,y,w,h} as 0-1 fractions of the oriented+straightened frame, or null for no crop.
+  return { quarter:0, mirror:false, angle:0, crop:null };
+}
 function defaultParams(){
   return {
+    geom: defaultGeom(),
     bg: { enabled:false, strength:50 },
     statStretch: {
       enabled:false, targetMedian:25, sigma:50, noBlackClip:false,
@@ -1156,6 +1269,119 @@ function floatToImageData8bit(floatImg){
     out[i*4+3]=255;
   }
   return new ImageData(out,w,h);
+}
+
+/* ============================================================
+   GEOMETRY — MATH (orient -> straighten -> crop)
+   ------------------------------------------------------------
+   Non-destructive: state.baseFloat is never modified. The chosen
+   geometry is applied to it fresh (and cached) at the very start
+   of the pipeline, so Background/Stretch/etc. only ever see the
+   framed image, and Undo/Redo/Reset cover geometry like any other
+   edit. Everything here works directly on the Float32 channels,
+   so FITS/TIFF precision is preserved.
+   ============================================================ */
+/* 1) Lossless pixel shuffle: optional left/right mirror, then `quarter` clockwise 90° turns. */
+function orientFloat(img, quarter, mirror){
+  if (quarter===0 && !mirror) return img;
+  const aw = img.width, ah = img.height;
+  const swap = (quarter & 1) === 1;
+  const ow = swap ? ah : aw, oh = swap ? aw : ah;
+  const n = ow*oh;
+  const R = new Float32Array(n), G = new Float32Array(n), B = new Float32Array(n);
+  for(let y=0;y<oh;y++){
+    for(let x=0;x<ow;x++){
+      let ax, ay; // position in the (mirrored) intermediate image
+      if (quarter===0){ ax=x; ay=y; }
+      else if (quarter===1){ ax=y; ay=ah-1-x; }
+      else if (quarter===2){ ax=aw-1-x; ay=ah-1-y; }
+      else { ax=aw-1-y; ay=x; }
+      const sx = mirror ? aw-1-ax : ax;
+      const si = ay*aw + sx, di = y*ow + x;
+      R[di]=img.R[si]; G[di]=img.G[si]; B[di]=img.B[si];
+    }
+  }
+  return { width:ow, height:oh, R, G, B };
+}
+
+/* 2) Fine rotation about the centre with bilinear sampling. The frame keeps its size; anything
+   rotated out of frame is dropped and the exposed corners are filled with black (0). Positive
+   angle = clockwise. */
+function straightenFloat(img, angleDeg){
+  if (!angleDeg) return img;
+  const w = img.width, h = img.height, n = w*h;
+  const R = new Float32Array(n), G = new Float32Array(n), B = new Float32Array(n);
+  const rad = angleDeg*Math.PI/180, cos = Math.cos(rad), sin = Math.sin(rad);
+  const cx = (w-1)/2, cy = (h-1)/2;   // pixel centres sit on integer coordinates
+  const sR = img.R, sG = img.G, sB = img.B;
+  for(let y=0;y<h;y++){
+    const dy = y-cy;
+    const sx0 = cx - cx*cos + dy*sin;   // source x/y for x=0 on this row (inverse rotation)
+    const sy0 = cy + cx*sin + dy*cos;
+    for(let x=0;x<w;x++){
+      const sx = sx0 + x*cos, sy = sy0 - x*sin;
+      if (sx < -0.5 || sx > w-0.5 || sy < -0.5 || sy > h-0.5) continue; // outside the source -> black
+      const fx = sx<0?0:(sx>w-1?w-1:sx), fy = sy<0?0:(sy>h-1?h-1:sy);
+      const x0 = Math.floor(fx), y0 = Math.floor(fy);
+      const x1 = x0+1<w ? x0+1 : x0, y1 = y0+1<h ? y0+1 : y0;
+      const tx = fx-x0, ty = fy-y0;
+      const w00=(1-tx)*(1-ty), w10=tx*(1-ty), w01=(1-tx)*ty, w11=tx*ty;
+      const i00=y0*w+x0, i10=y0*w+x1, i01=y1*w+x0, i11=y1*w+x1, di=y*w+x;
+      R[di]=sR[i00]*w00+sR[i10]*w10+sR[i01]*w01+sR[i11]*w11;
+      G[di]=sG[i00]*w00+sG[i10]*w10+sG[i01]*w01+sG[i11]*w11;
+      B[di]=sB[i00]*w00+sB[i10]*w10+sB[i01]*w01+sB[i11]*w11;
+    }
+  }
+  return { width:w, height:h, R, G, B };
+}
+
+/* 3) Crop to a rectangle given as 0-1 fractions of the frame. */
+function cropFloat(img, c){
+  const W = img.width, H = img.height;
+  let x0 = clampRange(Math.round(c.x*W), 0, W-1), y0 = clampRange(Math.round(c.y*H), 0, H-1);
+  let x1 = clampRange(Math.round((c.x+c.w)*W), x0+1, W), y1 = clampRange(Math.round((c.y+c.h)*H), y0+1, H);
+  const w = x1-x0, h = y1-y0;
+  if (w===W && h===H) return img;
+  const R = new Float32Array(w*h), G = new Float32Array(w*h), B = new Float32Array(w*h);
+  for(let y=0;y<h;y++){
+    const so = (y0+y)*W + x0;
+    R.set(img.R.subarray(so, so+w), y*w);
+    G.set(img.G.subarray(so, so+w), y*w);
+    B.set(img.B.subarray(so, so+w), y*w);
+  }
+  return { width:w, height:h, R, G, B };
+}
+
+/* Crop rectangles are stored in the frame's own coordinates, so when the frame itself is turned or
+   mirrored the rectangle has to be carried along with it (all exact, in 0-1 space). */
+function cropRectRotateCW(c){  return { x:1-c.y-c.h, y:c.x,       w:c.h, h:c.w }; }
+function cropRectRotateCCW(c){ return { x:c.y,       y:1-c.x-c.w, w:c.h, h:c.w }; }
+function cropRectFlipH(c){     return { x:1-c.x-c.w, y:c.y,       w:c.w, h:c.h }; }
+function cropRectFlipV(c){     return { x:c.x,       y:1-c.y-c.h, w:c.w, h:c.h }; }
+
+/* Cached: the oriented+straightened frame (what the crop tool draws over) and the final result.
+   Keyed on the source object identity plus the geometry values, so ordinary slider drags elsewhere
+   never redo this work. */
+const geomCache = { src:null, frameKey:'', frame:null, finalKey:'', final:null };
+function getOrientedFrame(){
+  const src = state.baseFloat, g = state.params.geom;
+  const key = g.quarter+'|'+(g.mirror?1:0)+'|'+g.angle;
+  if (geomCache.src===src && geomCache.frameKey===key) return geomCache.frame;
+  let out = orientFloat(src, g.quarter, g.mirror);
+  out = straightenFloat(out, g.angle);
+  geomCache.src = src; geomCache.frameKey = key; geomCache.frame = out;
+  geomCache.finalKey = ''; geomCache.final = null;
+  return out;
+}
+function getGeomSource(ignoreCrop){
+  const frame = getOrientedFrame();
+  const c = state.params.geom.crop;
+  if (ignoreCrop || !c) return frame;
+  const key = [c.x,c.y,c.w,c.h].join(',');
+  if (geomCache.finalKey===key && geomCache.final) return geomCache.final;
+  geomCache.final = cropFloat(frame, c);
+  geomCache.finalKey = key;
+  return geomCache.final;
 }
 
 /* ============================================================
@@ -1645,6 +1871,7 @@ function computeCurveHistograms(floatImg){
 }
 
 function render(){
+  updateGeometryUI();
   if (!state.baseFloat){
     emptyState.style.display='flex';
     mainCanvas.style.display='none';
@@ -1654,7 +1881,15 @@ function render(){
   emptyState.style.display='none';
   mainCanvas.style.display='block';
   zoomBar.classList.add('visible');
-  const pre = computePreCurveFloat(state.baseFloat, state.params);
+  // Geometry (orient/straighten/crop) comes first. While the crop tool is open we show the whole
+  // frame (ignoring the saved crop) so the box can be dragged anywhere within it.
+  const geomSrc = getGeomSource(cropUI.active);
+  if (geomSrc.width!==state.width || geomSrc.height!==state.height){
+    state.width = geomSrc.width; state.height = geomSrc.height;
+    document.getElementById('imageDims').textContent = `${state.width} × ${state.height}`;
+    if (state.zoomFitMode) state.zoom = computeFitZoom();
+  }
+  const pre = computePreCurveFloat(geomSrc, state.params);
   lastCurveHistData = computeCurveHistograms(pre);
   Object.keys(curveCanvases).forEach(ch=>drawCurveEditor(ch));
   const result = computePostCurveFloat(pre, state.params, state.curves);
@@ -1781,12 +2016,262 @@ document.addEventListener('keydown', (e)=>{
 window.addEventListener('resize', ()=>{ if (state.zoomFitMode) zoomToFit(); });
 
 /* ============================================================
+   CROP & ROTATE — UI
+   ------------------------------------------------------------
+   Rotate/flip/straighten/crop all live in state.params.geom, so the
+   normal history + reset machinery handles them. The crop box itself
+   is a draft (cropUI.rect, in pixels of the uncropped frame) that only
+   becomes part of the params — and an undo step — when "Apply" is hit.
+   ============================================================ */
+const cropUI = { active:false, fw:0, fh:0, rect:null, drag:null };
+const CROP_MIN = 8; // smallest crop edge, in pixels
+
+const cropOverlay   = document.getElementById('cropOverlay');
+const cropBox       = document.getElementById('cropBox');
+const cropDimLabel  = document.getElementById('cropDim');
+const cropReadout   = document.getElementById('cropReadout');
+const cropAspectSel = document.getElementById('cropAspect');
+const cropIdleEl    = document.getElementById('cropIdle');
+const cropActiveEl  = document.getElementById('cropActive');
+const btnRotL = document.getElementById('btnRotL');
+const btnRotR = document.getElementById('btnRotR');
+const btnFlipH = document.getElementById('btnFlipH');
+const btnFlipV = document.getElementById('btnFlipV');
+const btnCropStart = document.getElementById('btnCropStart');
+const btnCropClear = document.getElementById('btnCropClear');
+const geomAngleSlider = document.getElementById('geomAngle');
+const geomAngleField = document.getElementById('geomAngleField');
+
+function updateGeometryUI(){
+  const has = !!state.baseFloat;
+  const lock = !has || cropUI.active; // orientation is frozen while the crop box is open
+  [btnRotL, btnRotR, btnFlipH, btnFlipV, geomAngleSlider].forEach(el=>{ el.disabled = lock; });
+  geomAngleField.classList.toggle('disabled', lock);
+  btnCropStart.disabled = !has || cropUI.active;
+  btnCropClear.disabled = !has || cropUI.active || !state.params.geom.crop;
+  cropIdleEl.hidden = cropUI.active;
+  cropActiveEl.hidden = !cropUI.active;
+}
+
+/* ---- Rotate / flip buttons ---- */
+function geomEdit(fn){
+  if (!state.baseFloat || cropUI.active) return;
+  const g = state.params.geom;
+  fn(g);
+  if (g.angle===0) g.angle = 0; // normalise -0
+  syncControlsFromParams();
+  scheduleRender();
+  commitHistory();
+}
+btnRotR.addEventListener('click', ()=>geomEdit(g=>{
+  g.quarter = (g.quarter+1)%4;
+  if (g.crop) g.crop = cropRectRotateCW(g.crop);
+}));
+btnRotL.addEventListener('click', ()=>geomEdit(g=>{
+  g.quarter = (g.quarter+3)%4;
+  if (g.crop) g.crop = cropRectRotateCCW(g.crop);
+}));
+/* A flip as seen on screen (after the current orientation) swaps the turn direction and mirrors the
+   fine angle; the stored (quarter, mirror) pair is updated to match. */
+btnFlipH.addEventListener('click', ()=>geomEdit(g=>{
+  g.quarter = (4-g.quarter)%4;
+  g.mirror = !g.mirror;
+  g.angle = -g.angle;
+  if (g.crop) g.crop = cropRectFlipH(g.crop);
+}));
+btnFlipV.addEventListener('click', ()=>geomEdit(g=>{
+  g.quarter = (((2-g.quarter)%4)+4)%4;
+  g.mirror = !g.mirror;
+  g.angle = -g.angle;
+  if (g.crop) g.crop = cropRectFlipV(g.crop);
+}));
+geomAngleSlider.addEventListener('dblclick', ()=>geomEdit(g=>{ g.angle = 0; }));
+
+/* ---- Crop box geometry helpers (all in pixels of the uncropped frame) ---- */
+function sanitizeCropRect(r){
+  const w = clampRange(r.w, 1, cropUI.fw), h = clampRange(r.h, 1, cropUI.fh);
+  return { x:clampRange(r.x, 0, cropUI.fw-w), y:clampRange(r.y, 0, cropUI.fh-h), w, h };
+}
+function getCropAspect(){
+  const v = cropAspectSel.value;
+  if (v==='free') return null;
+  if (v==='orig') return cropUI.fw/cropUI.fh;
+  const [a,b] = v.split(':').map(Number);
+  return cropUI.fw >= cropUI.fh ? a/b : b/a; // presets are wide:tall; follow the frame's orientation
+}
+/* Largest box of the given ratio that fits inside `r`, sharing its centre. */
+function fitCropToAspect(r, ar){
+  let w = r.w, h = r.h;
+  if (w/h > ar) w = h*ar; else h = w/ar;
+  return sanitizeCropRect({ x:r.x+(r.w-w)/2, y:r.y+(r.h-h)/2, w, h });
+}
+/* Resize by dragging handle `hd` (any of n/s/e/w combined) to pointer position p, starting from rect s.
+   With an aspect ratio set, corners keep the opposite corner fixed and edges resize about the centre. */
+function resizeCropRect(hd, p, s, ar){
+  const fw = cropUI.fw, fh = cropUI.fh;
+  const hasW = hd.includes('w'), hasE = hd.includes('e'), hasN = hd.includes('n'), hasS = hd.includes('s');
+  let L = s.x, T = s.y, R = s.x+s.w, B = s.y+s.h;
+  if (!ar){
+    if (hasW) L = clampRange(p.x, 0, R-CROP_MIN);
+    if (hasE) R = clampRange(p.x, L+CROP_MIN, fw);
+    if (hasN) T = clampRange(p.y, 0, B-CROP_MIN);
+    if (hasS) B = clampRange(p.y, T+CROP_MIN, fh);
+    return { x:L, y:T, w:R-L, h:B-T };
+  }
+  if ((hasW||hasE) && (hasN||hasS)){                 // corner: opposite corner stays put
+    const ax = hasW ? R : L, ay = hasN ? B : T;
+    const sx = hasW ? -1 : 1, sy = hasN ? -1 : 1;
+    const maxW = Math.min(sx>0 ? fw-ax : ax, (sy>0 ? fh-ay : ay)*ar);
+    const w = clampRange(Math.max((p.x-ax)*sx, (p.y-ay)*sy*ar), CROP_MIN, maxW);
+    const h = w/ar;
+    return { x:sx>0?ax:ax-w, y:sy>0?ay:ay-h, w, h };
+  }
+  if (hasW||hasE){                                   // left/right edge: width leads, height follows
+    const ax = hasW ? R : L, sx = hasW ? -1 : 1;
+    const maxW = Math.min(sx>0 ? fw-ax : ax, fh*ar);
+    const w = clampRange((p.x-ax)*sx, CROP_MIN, maxW);
+    const h = w/ar;
+    const y = clampRange(T+(B-T)/2-h/2, 0, fh-h);
+    return { x:sx>0?ax:ax-w, y, w, h };
+  }
+  const ay = hasN ? B : T, sy = hasN ? -1 : 1;        // top/bottom edge: height leads, width follows
+  const maxH = Math.min(sy>0 ? fh-ay : ay, fw/ar);
+  const h = clampRange((p.y-ay)*sy, CROP_MIN, maxH);
+  const w = h*ar;
+  const x = clampRange(L+(R-L)/2-w/2, 0, fw-w);
+  return { x, y:sy>0?ay:ay-h, w, h };
+}
+
+function updateCropBox(){
+  const r = cropUI.rect;
+  cropBox.style.left   = (r.x/cropUI.fw*100)+'%';
+  cropBox.style.top    = (r.y/cropUI.fh*100)+'%';
+  cropBox.style.width  = (r.w/cropUI.fw*100)+'%';
+  cropBox.style.height = (r.h/cropUI.fh*100)+'%';
+  const txt = Math.round(r.w)+' × '+Math.round(r.h);
+  cropDimLabel.textContent = txt;
+  cropReadout.textContent = txt+' px';
+}
+
+/* ---- Enter / leave the crop tool ---- */
+function enterCropMode(){
+  if (!state.baseFloat || cropUI.active) return;
+  const frame = getOrientedFrame();
+  cropUI.fw = frame.width; cropUI.fh = frame.height;
+  const c = state.params.geom.crop;
+  cropUI.rect = sanitizeCropRect(c
+    ? { x:c.x*frame.width, y:c.y*frame.height, w:c.w*frame.width, h:c.h*frame.height }
+    : { x:0, y:0, w:frame.width, h:frame.height });
+  cropAspectSel.value = 'free';
+  cropUI.active = true;
+  cropOverlay.classList.add('active');
+  updateCropBox();
+  updateGeometryUI();
+  scheduleRender(); // re-renders the full (uncropped) frame underneath the box
+}
+function exitCropMode(){
+  cropUI.active = false;
+  cropUI.drag = null;
+  cropOverlay.classList.remove('active');
+  updateGeometryUI();
+}
+function applyCrop(){
+  if (!cropUI.active) return;
+  const fw = cropUI.fw, fh = cropUI.fh, r = cropUI.rect;
+  const x0 = Math.round(r.x), y0 = Math.round(r.y);
+  const x1 = Math.round(r.x+r.w), y1 = Math.round(r.y+r.h);
+  const isFull = x0<=0 && y0<=0 && x1>=fw && y1>=fh;
+  setParam('geom.crop', isFull ? null : { x:x0/fw, y:y0/fh, w:(x1-x0)/fw, h:(y1-y0)/fh });
+  exitCropMode();
+  scheduleRender();
+  commitHistory();
+}
+function cancelCrop(){
+  if (!cropUI.active) return;
+  exitCropMode();
+  scheduleRender();
+}
+btnCropStart.addEventListener('click', enterCropMode);
+document.getElementById('btnCropApply').addEventListener('click', applyCrop);
+document.getElementById('btnCropCancel').addEventListener('click', cancelCrop);
+btnCropClear.addEventListener('click', ()=>{
+  if (!state.params.geom.crop) return;
+  setParam('geom.crop', null);
+  scheduleRender();
+  commitHistory();
+});
+cropAspectSel.addEventListener('change', ()=>{
+  const ar = getCropAspect();
+  if (!ar || !cropUI.active) return;
+  cropUI.rect = fitCropToAspect(cropUI.rect, ar);
+  updateCropBox();
+});
+
+/* ---- Dragging the box ---- */
+function cropPointerToFrame(e){
+  const b = cropOverlay.getBoundingClientRect();
+  return {
+    x: clampRange((e.clientX-b.left)/b.width*cropUI.fw, 0, cropUI.fw),
+    y: clampRange((e.clientY-b.top)/b.height*cropUI.fh, 0, cropUI.fh),
+  };
+}
+cropOverlay.addEventListener('pointerdown', (e)=>{
+  if (!cropUI.active || e.button!==0) return;
+  e.preventDefault();
+  const p = cropPointerToFrame(e);
+  const handle = e.target && e.target.dataset ? e.target.dataset.h : undefined;
+  const mode = handle ? 'resize' : (cropBox.contains(e.target) ? 'move' : 'new');
+  cropUI.drag = { mode, handle, p0:p, start:{ ...cropUI.rect } };
+  cropOverlay.setPointerCapture(e.pointerId);
+});
+cropOverlay.addEventListener('pointermove', (e)=>{
+  const d = cropUI.drag;
+  if (!d) return;
+  const p = cropPointerToFrame(e), ar = getCropAspect();
+  let r;
+  if (d.mode==='move'){
+    r = { x:d.start.x+(p.x-d.p0.x), y:d.start.y+(p.y-d.p0.y), w:d.start.w, h:d.start.h };
+  } else if (d.mode==='resize'){
+    r = resizeCropRect(d.handle, p, d.start, ar);
+  } else { // drawing a fresh box from the point where the drag began
+    const hd = (p.y>=d.p0.y ? 's' : 'n') + (p.x>=d.p0.x ? 'e' : 'w');
+    r = resizeCropRect(hd, p, { x:d.p0.x, y:d.p0.y, w:0, h:0 }, ar);
+  }
+  cropUI.rect = sanitizeCropRect(r);
+  updateCropBox();
+});
+function endCropDrag(){
+  const d = cropUI.drag;
+  if (!d) return;
+  cropUI.drag = null;
+  // a plain click outside the box shouldn't collapse it to a sliver
+  if (d.mode==='new' && (cropUI.rect.w < CROP_MIN*1.5 || cropUI.rect.h < CROP_MIN*1.5)){
+    cropUI.rect = d.start;
+    updateCropBox();
+  }
+}
+cropOverlay.addEventListener('pointerup', endCropDrag);
+cropOverlay.addEventListener('pointercancel', endCropDrag);
+
+document.addEventListener('keydown', (e)=>{
+  if (!cropUI.active) return;
+  if (e.key==='Escape'){ e.preventDefault(); cancelCrop(); }
+  else if (e.key==='Enter'){
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag==='BUTTON' || tag==='SELECT' || tag==='INPUT') return; // let the focused control handle Enter
+    e.preventDefault();
+    applyCrop();
+  }
+});
+
+/* ============================================================
    UI <-> PARAM WIRING (generic)
    ============================================================ */
 function formatSliderValue(el, val){
   const path = el.dataset.param;
   if (path.endsWith('gamma')) return (val/100).toFixed(2);
   if (path==='statStretch.sigma') return (val/10).toFixed(1);
+  if (path==='geom.angle') return (val===0 ? 0 : val).toFixed(1)+'°';
   return String(Math.round(val));
 }
 function refreshValueLabel(path){
@@ -2074,6 +2559,7 @@ function commitHistory(){
 }
 function restoreSnapshot(snap){
   const obj = JSON.parse(snap);
+  if (cropUI.active) exitCropMode(); // an open crop box would be stale after the params change under it
   state.params = obj.params;
   state.curves = obj.curves;
   syncControlsFromParams();
@@ -2098,6 +2584,7 @@ btnRedo.addEventListener('click', ()=>{
   updateHistoryButtons();
 });
 btnReset.addEventListener('click', ()=>{
+  if (cropUI.active) exitCropMode();
   state.params = defaultParams();
   state.curves = defaultCurves();
   syncControlsFromParams();
@@ -2624,6 +3111,12 @@ fileInput.addEventListener('change', async (e)=>{
     const imgData = drawToWorkingRes(loaded.source, state.width, state.height);
     state.baseFloat = imageDataToFloatImage(imgData);
   }
+
+  // Rotation/crop belong to one specific image, so a new file always starts un-rotated and un-cropped
+  // (the tonal settings keep carrying over exactly as before).
+  if (cropUI.active) exitCropMode();
+  state.params.geom = defaultGeom();
+  syncControlsFromParams();
 
   document.getElementById('imageName').textContent = state.imageName;
   document.getElementById('imageDims').textContent = `${state.width} × ${state.height}`;
